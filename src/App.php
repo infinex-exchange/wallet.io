@@ -51,7 +51,7 @@ class App extends Infinex\App\App {
                 ]);
             }
         ) -> catch(
-            function($e) {
+            function($e) use($th) {
                 $th -> log -> error('Failed start app: '.((string) $e));
             }
         );
