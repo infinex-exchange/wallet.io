@@ -9,6 +9,7 @@ class Withdrawals {
     
     function __construct($log, $amqp, $pdo) {
         $this -> log = $log;
+        $this -> amqp = $amqp;
         $this -> pdo = $pdo;
         
         $this -> log -> debug('Initialized withdrawals manager');
