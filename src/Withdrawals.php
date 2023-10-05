@@ -72,9 +72,9 @@ class Withdrawals {
         
         $q = $this -> pdo -> prepare($sql);
         $q -> execute($task);
-        $infoShard = $q -> fetch();
+        $infoNodes = $q -> fetch();
         
-        $operating = time() - intval($infoShard['last_ping']) <= 5 * 60;
+        $operating = time() - intval($infoNodes['last_ping']) <= 5 * 60;
         
         return [
             'operating' => $operating

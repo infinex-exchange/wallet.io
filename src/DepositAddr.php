@@ -71,7 +71,7 @@ class DepositAddr {
             ':uid' => $body['uid']
         ];
         
-        $sql = 'SELECT shardid,
+        $sql = 'SELECT shardno,
                        address,
                        memo
                 FROM deposit_addr
@@ -93,7 +93,7 @@ class DepositAddr {
                         AND uid IS NULL
                         LIMIT 1
                     )
-                    RETURNING shardid,
+                    RETURNING shardno,
                               address,
                               memo';
             
@@ -112,7 +112,8 @@ class DepositAddr {
         // Get shard details
         
         $task = [
-            ':shardid' => $infoAddr['shardid']
+            ':netid' => $body['netid'],
+            ':shardno' => $infoAddr['shardno']
         ];
         
         $sql = 'SELECT wallet_shards.deposit_warning,
@@ -120,9 +121,12 @@ class DepositAddr {
                        EXTRACT(epoch FROM MAX(wallet_nodes.last_ping)) AS last_ping
                 FROM wallet_shards,
                      wallet_nodes
-                WHERE wallet_nodes.shardid = wallet_shards.shardid
-                AND wallet_shards.shardid = :shardid
-                GROUP BY wallet_shards.shardid';
+                WHERE wallet_nodes.netid = wallet_shards.netid
+                AND wallet_nodes.shardno = wallet_shards.shardno
+                AND wallet_shards.netid = :netid
+                AND wallet_shards.shardno = :shardno
+                GROUP BY wallet_shards.netid,
+                         wallet_shards.shardno';
         
         $q = $this -> pdo -> prepare($sql);
         $q -> execute($task);
