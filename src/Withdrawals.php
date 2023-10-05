@@ -28,6 +28,17 @@ class Withdrawals {
             }
         );
         
+        $promises[] = $this -> amqp -> method(
+            'validateWithdrawalTarget',
+            function($body) use($th) {
+                return $th -> validateWithdrawalTarget(
+                    $body['netid'],
+                    $body['address'],
+                    $body['memo']
+                );
+            }
+        );
+        
         return Promise\all($promises) -> then(
             function() use($th) {
                 $th -> log -> info('Started withdrawals manager');
@@ -46,6 +57,7 @@ class Withdrawals {
         $promises = [];
         
         $promises[] = $this -> amqp -> unreg('getWithdrawalContext');
+        $promises[] = $this -> amqp -> unreg('validateWithdrawalTarget');
         
         return Promise\all($promises) -> then(
             function() use ($th) {
@@ -80,6 +92,13 @@ class Withdrawals {
         
         return [
             'operating' => $operating
+        ];
+    }
+    
+    public function validateWithdrawalTarget($netid, $address, $memo) {
+        return [
+            'validAddress' => true,
+            'validMemo' => null
         ];
     }
 }
