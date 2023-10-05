@@ -128,7 +128,8 @@ class DepositAddr {
                 AND wallet_shards.netid = :netid
                 AND wallet_shards.shardno = :shardno
                 GROUP BY wallet_shards.netid,
-                         wallet_shards.shardno';
+                         wallet_shards.shardno,
+                         wallet_shards.deposit_warning';
         
         $q = $this -> pdo -> prepare($sql);
         $q -> execute($task);
