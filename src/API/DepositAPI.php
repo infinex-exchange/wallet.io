@@ -18,7 +18,7 @@ class DepositAPI {
     }
     
     public function initRoutes($rc) {
-        $rc -> get('/deposit/{asset}/{network}', [$this, 'deposit']);
+        $rc -> get('/deposit/{network}/{asset}', [$this, 'deposit']);
     }
     
     public function deposit($path, $query, $body, $auth) {
