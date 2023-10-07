@@ -4,6 +4,7 @@ require __DIR__.'/Networks.php';
 require __DIR__.'/AssetNetwork.php';
 require __DIR__.'/DepositAddr.php';
 require __DIR__.'/Withdrawals.php';
+require __DIR__.'/Transactions.php';
 
 require __DIR__.'/API/NetworksAPI.php';
 require __DIR__.'/API/DepositAPI.php';
@@ -18,6 +19,7 @@ class App extends Infinex\App\App {
     private $an;
     private $depositAddr;
     private $withdrawals;
+    private $transactions;
     
     private $networksApi;
     private $depositApi;
@@ -56,6 +58,12 @@ class App extends Infinex\App\App {
         );
         
         $this -> withdrawals = new Withdrawals(
+            $this -> log,
+            $this -> amqp,
+            $this -> pdo
+        );
+        
+        $this -> transactions = new Transactions(
             $this -> log,
             $this -> amqp,
             $this -> pdo
