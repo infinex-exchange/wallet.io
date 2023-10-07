@@ -22,9 +22,12 @@ class DepositAddr {
         $promises = [];
         
         $promises[] = $this -> amqp -> method(
-            'getDepositContext',
+            'getDepositAddr',
             function($body) use($th) {
-                return $th -> getDepositContext($body);
+                return $th -> getDepositAddr(
+                    $body['uid'],
+                    $body['netid']
+                );
             }
         );
         
@@ -45,7 +48,7 @@ class DepositAddr {
         
         $promises = [];
         
-        $promises[] = $this -> amqp -> unreg('getDepositContext');
+        $promises[] = $this -> amqp -> unreg('getDepositAddr');
         
         return Promise\all($promises) -> then(
             function() use ($th) {
@@ -58,19 +61,12 @@ class DepositAddr {
         );
     }
     
-    public function getDepositContext($body) {
-        if(!isset($body['uid']))
-            throw new Error('MISSING_DATA', 'uid');
-        if(!isset($body['netid']))
-            throw new Error('MISSING_DATA', 'netid');
-        
-        // Get deposit address
-        
+    public function getDepositAddr($uid, $netid) {
         $this -> pdo -> beginTransaction();
         
         $task = [
-            ':netid' => $body['netid'],
-            ':uid' => $body['uid']
+            ':uid' => $uid,
+            ':netid' => $netid
         ];
         
         $sql = 'SELECT shardno,
@@ -83,9 +79,9 @@ class DepositAddr {
         
         $q = $this -> pdo -> prepare($sql);
         $q -> execute($task);
-        $infoAddr = $q -> fetch();
+        $row = $q -> fetch();
         
-        if(!$infoAddr) {  
+        if(!$row) {  
             $sql = 'UPDATE deposit_addr
                     SET uid = :uid
                     WHERE addrid IN (
@@ -101,60 +97,21 @@ class DepositAddr {
             
             $q = $this -> pdo -> prepare($sql);
             $q -> execute($task);
-            $infoAddr = $q -> fetch();
+            $row = $q -> fetch();
             
-            if(!$infoAddr) {
+            if(!$row) {
                 $this -> pdo -> rollBack();
                 throw new Error('ASSIGN_ADDR_FAILED', 'Unable to assign new deposit address. Please try again later.', 500);
             }
         }
         
         $this -> pdo -> commit();
-        
-        // Get shard details
-        
-        $task = [
-            ':netid' => $body['netid'],
-            ':shardno' => $infoAddr['shardno']
-        ];
-        
-        $sql = 'SELECT wallet_shards.deposit_warning,
-                       wallet_shards.block_deposits_msg,
-                       EXTRACT(epoch FROM MAX(wallet_nodes.last_ping)) AS last_ping
-                FROM wallet_shards,
-                     wallet_nodes
-                WHERE wallet_nodes.netid = wallet_shards.netid
-                AND wallet_nodes.shardno = wallet_shards.shardno
-                AND wallet_shards.netid = :netid
-                AND wallet_shards.shardno = :shardno
-                GROUP BY wallet_shards.netid,
-                         wallet_shards.shardno,
-                         wallet_shards.deposit_warning,
-                         wallet_shards.block_deposits_msg';
-        
-        $q = $this -> pdo -> prepare($sql);
-        $q -> execute($task);
-        $infoShard = $q -> fetch();
-        
-        if($infoShard['block_deposits_msg'] !== null)
-            throw new Error('FORBIDDEN', $infoShard['block_deposits_msg'], 403);
-        
-        $operating = time() - intval($infoShard['last_ping']) <= 5 * 60;
-        
-        // Prepare response
                 
-        $resp = [
-            'memo' => $infoAddr['memo'],
-            'warnings' => [],
-            'operating' => $operating,
-            'address' => $infoAddr['address']
+        return [
+            'address' => $row['address'],
+            'memo' => $row['memo'],
+            'shardno' => $row['shardno']
         ];
-        
-        // Warnings
-        if($infoShard['deposit_warning'] !== null)
-            $resp['warnings'][] = $infoShard['deposit_warning'];
-        
-        return $resp;
     }
 }
 

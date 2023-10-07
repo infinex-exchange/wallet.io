@@ -1,15 +1,28 @@
 <?php
 
+require __DIR__.'/Networks.php';
+require __DIR__.'/AssetNetwork.php';
 require __DIR__.'/DepositAddr.php';
 require __DIR__.'/Withdrawals.php';
+
+require __DIR__.'/API/NetworksAPI.php';
+require __DIR__.'/API/DepositAPI.php';
+require __DIR__.'/API/WithdrawalAPI.php';
 
 use React\Promise;
 
 class App extends Infinex\App\App {
     private $pdo;
     
-    private $depoAddr;
-    private $wd;
+    private $networks;
+    private $an;
+    private $depositAddr;
+    private $withdrawals;
+    
+    private $networksApi;
+    private $depositApi;
+    private $withdrawalApi;
+    private $rest;
     
     function __construct() {
         parent::__construct('wallet.io');
@@ -23,16 +36,62 @@ class App extends Infinex\App\App {
             DB_NAME
         );
         
-        $this -> depoAddr = new DepositAddr(
+        $this -> networks = new Networks(
             $this -> log,
             $this -> amqp,
             $this -> pdo
         );
         
-        $this -> wd = new Withdrawals(
+        $this -> an = new AssetNetwork(
+            $this -> log,
+            $this -> amqp,
+            $this -> pdo,
+            $this -> networks
+        );
+        
+        $this -> depositAddr = new DepositAddr(
             $this -> log,
             $this -> amqp,
             $this -> pdo
+        );
+        
+        $this -> withdrawals = new Withdrawals(
+            $this -> log,
+            $this -> amqp,
+            $this -> pdo
+        );
+        
+        $this -> networksApi = new NetworksAPI(
+            $this -> log,
+            $this -> pdo,
+            $this -> networks,
+            $this -> an
+        );
+        
+        $this -> depositApi = new DepositAPI(
+            $this -> log,
+            $this -> pdo,
+            $this -> depositAddr,
+            $this -> an
+        );
+        
+        $this -> withdrawalApi = new WithdrawalAPI(
+            $this -> log,
+            $this -> amqp,
+            $this -> pdo,
+            $this -> withdrawals,
+            $this -> networks,
+            $this -> an
+        );
+        
+        $this -> rest = new Infinex\API\REST(
+            $this -> log,
+            $this -> amqp,
+            [
+                $this -> networksApi,
+                $this -> depositApi,
+                $this -> withdrawalApi
+            ]
         );
     }
     
@@ -46,9 +105,18 @@ class App extends Infinex\App\App {
         ) -> then(
             function() use($th) {
                 return Promise\all([
-                    $th -> depoAddr -> start(),
-                    $th -> wd -> start()
+                    $th -> networks -> start(),
+                    $th -> depositAddr -> start(),
+                    $th -> withdrawals -> start()
                 ]);
+            }
+        ) -> then(
+            function() use($th) {
+                return $th -> an -> start();
+            }
+        ) -> then(
+            function() use($th) {
+                return $th -> rest -> start();
             }
         ) -> catch(
             function($e) use($th) {
@@ -60,10 +128,19 @@ class App extends Infinex\App\App {
     public function stop() {
         $th = $this;
         
-        Promise\all([
-            $th -> depoAddr -> stop(),
-            $th -> wd -> stop()
-        ]) -> then(
+        $th -> rest -> stop() -> then(
+            function() use($th) {
+                return $th -> an -> stop();
+            }
+        ) -> then(
+            function() use($th) {
+                return Promise\all([
+                    $th -> networks -> stop(),
+                    $th -> depositAddr -> stop(),
+                    $th -> withdrawals -> stop()
+                ]);
+            }
+        ) -> then(
             function() use($th) {
                 return $th -> pdo -> stop();
             }

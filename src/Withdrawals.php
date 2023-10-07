@@ -22,19 +22,12 @@ class Withdrawals {
         $promises = [];
         
         $promises[] = $this -> amqp -> method(
-            'getWithdrawalContext',
-            function($body) use($th) {
-                return $th -> getWithdrawalContext($body);
-            }
-        );
-        
-        $promises[] = $this -> amqp -> method(
             'validateWithdrawalTarget',
             function($body) use($th) {
                 return $th -> validateWithdrawalTarget(
                     $body['netid'],
-                    $body['address'],
-                    $body['memo']
+                    isset($body['address']) ? $body['address'] : null,
+                    isset($body['memo']) ? $body['memo'] : null
                 );
             }
         );
@@ -56,7 +49,6 @@ class Withdrawals {
         
         $promises = [];
         
-        $promises[] = $this -> amqp -> unreg('getWithdrawalContext');
         $promises[] = $this -> amqp -> unreg('validateWithdrawalTarget');
         
         return Promise\all($promises) -> then(
@@ -70,35 +62,32 @@ class Withdrawals {
         );
     }
     
-    public function getWithdrawalContext($body) {
-        if(!isset($body['netid']))
-            throw new Error('MISSING_DATA', 'netid');
-        
-        // Get shard details
-        
-        $task = [
-            ':netid' => $body['netid']
-        ];
-        
-        $sql = 'SELECT EXTRACT(epoch FROM MAX(last_ping)) AS last_ping
-                FROM wallet_nodes
-                WHERE netid = :netid';
-        
-        $q = $this -> pdo -> prepare($sql);
-        $q -> execute($task);
-        $infoNodes = $q -> fetch();
-        
-        $operating = time() - intval($infoNodes['last_ping']) <= 5 * 60;
-        
-        return [
-            'operating' => $operating
-        ];
-    }
-    
     public function validateWithdrawalTarget($netid, $address, $memo) {
+        if($address === null && $memo === null)
+            throw new Error('MISSING_DATA', 'At least one is required: address or memo', 400);
+        
+        if($memo !== null) {
+            $task = [
+                ':netid' => $netid
+            ];
+            
+            $sql = 'SELECT 1
+                    FROM networks
+                    WHERE netid = :netid
+                    AND memo_name IS NOT NULL';
+            
+            $q = $this -> pdo -> prepare($sql);
+            $q -> execute($task);
+            $row = $q -> fetch();
+            
+            if(!$row)
+                throw new Error('CONFLICT', 'Network does not support memo but provided', 409);
+        }
+        
         return [
             'validAddress' => true,
-            'validMemo' => null
+            'validMemo' => true,
+            'internal' => false
         ];
     }
 }
