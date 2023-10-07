@@ -63,6 +63,7 @@ class App extends Infinex\App\App {
         
         $this -> networksApi = new NetworksAPI(
             $this -> log,
+            $this -> amqp,
             $this -> pdo,
             $this -> networks,
             $this -> an

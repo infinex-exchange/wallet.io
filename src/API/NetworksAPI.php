@@ -10,8 +10,9 @@ class NetworksAPI {
     private $networks;
     private $an;
     
-    function __construct($log, $pdo, $networks, $an) {
+    function __construct($log, $amqp, $pdo, $networks, $an) {
         $this -> log = $log;
+        $this -> amqp = $amqp;
         $this -> pdo = $pdo;
         $this -> networks = $networks;
         $this -> an = $an;
