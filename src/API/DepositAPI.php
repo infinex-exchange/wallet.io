@@ -128,24 +128,24 @@ class DepositAPI {
             ];
             
             // Memo only if both set
-            if($infoNet['memo_name'] !== null && $infoIo['memo'] !== null) {
+            if($infoNet['memo_name'] !== null && $infoAddr['memo'] !== null) {
                 $resp['memoName'] = $infoNet['memo_name'];
-                $resp['memo'] = $infoIo['memo'];
+                $resp['memo'] = $infoAddr['memo'];
             }
             
             // Qr code for native
             if($infoAn['contract'] === NULL && $infoNet['native_qr_format'] !== NULL) {
                 $qrContent = $infoNet['native_qr_format'];
-                $qrContent = str_replace('{{ADDRESS}}', $infoIo['address'], $qrContent);
-                $qrContent = str_replace('{{MEMO}}', $infoIo['memo'], $qrContent);
+                $qrContent = str_replace('{{ADDRESS}}', $infoAddr['address'], $qrContent);
+                $qrContent = str_replace('{{MEMO}}', $infoAddr['memo'], $qrContent);
                 $resp['qrCode'] = $qrContent;
             }
             
             // Qr code for token
             else if($infoAn['contract'] !== NULL && $infoNet['token_qr_format'] !== NULL) {
                 $qrContent = $infoNet['token_qr_format'];
-                $qrContent = str_replace('{{ADDRESS}}', $infoIo['address'], $qrContent);
-                $qrContent = str_replace('{{MEMO}}', $infoIo['memo'], $qrContent);
+                $qrContent = str_replace('{{ADDRESS}}', $infoAddr['address'], $qrContent);
+                $qrContent = str_replace('{{MEMO}}', $infoAddr['memo'], $qrContent);
                 $qrContent = str_replace('{{CONTRACT}}', $infoAn['contract'], $qrContent);
                 $resp['qrCode'] = $qrContent;
             }
