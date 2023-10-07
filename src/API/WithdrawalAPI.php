@@ -26,7 +26,6 @@ class WithdrawalAPI {
     public function initRoutes($rc) {
         $rc -> get('/withdrawal/{network}/{asset}', [$this, 'preflight']);
         $rc -> post('/withdrawal/{network}', [$this, 'validate']);
-        $rc -> post('/withdrawal/{network}', [$this, 'validate']);
     }
     
     public function preflight($path, $query, $body, $auth) {
