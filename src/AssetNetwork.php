@@ -80,9 +80,7 @@ class AssetNetwork {
                 'allowDisabled' => $allowDisabled
             ]
         ) -> then(
-            function($resp) use($th, $netid, $assetSymbol, $networkSymbol, $allowDisabled) {
-                $assetid = $resp['assetid'];
-                
+            function($assetid) use($th, $netid, $assetSymbol, $networkSymbol, $allowDisabled) {
                 $task = [
                     ':assetid' => $assetid,
                     ':netid' => $netid
