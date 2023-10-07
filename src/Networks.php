@@ -115,7 +115,8 @@ class Networks {
         
         $sql = 'SELECT netid,
                        description,
-                       icon_url
+                       icon_url,
+                       memo_name
                 FROM networks
                 WHERE netid = :netid';
         
@@ -130,7 +131,8 @@ class Networks {
         return [
             'symbol' => $row['netid'],
             'name' => $row['description'],
-            'iconUrl' => $row['icon_url']
+            'iconUrl' => $row['icon_url'],
+            'memoName' => $row['memo_name']
         ];
     }
     

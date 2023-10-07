@@ -49,7 +49,8 @@ class NetworksAPI {
             
             $sql = 'SELECT networks.netid,
                            networks.description,
-                           networks.icon_url
+                           networks.icon_url,
+                           networks.memo_name
                     FROM networks';
             
             if($assetid)
