@@ -16,7 +16,7 @@ class WithdrawalAPI {
         $this -> log = $log;
         $this -> amqp = $amqp;
         $this -> pdo = $pdo;
-        $this -> withdrawals;
+        $this -> withdrawals = $withdrawals;
         $this -> networks = $networks;
         $this -> an = $an;
         
