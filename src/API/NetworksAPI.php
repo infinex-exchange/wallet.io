@@ -71,7 +71,7 @@ class NetworksAPI {
             
             while($row = $q -> fetch()) {
                 if($pag -> iter()) break;
-                $networks[] = $th -> rowToRespItem($row);
+                $networks[] = $th -> networks -> rowToNetworkItem($row);
             }
             
             return [
@@ -83,30 +83,7 @@ class NetworksAPI {
     
     public function getNetwork($path, $query, $body, $auth) {
         $netid = $th -> networks -> symbolToNetId($path['symbol'], false);
-        
-        $task = [
-            ':netid' => $netid
-        ];
-        
-        $sql = 'SELECT netid,
-                       description,
-                       icon_url
-                FROM networks
-                WHERE netid = :netid';
-        
-        $q = $this -> pdo -> prepare($sql);
-        $q -> execute($task);
-        $row = $q -> fetch();
-        
-        return $this -> rowToRespItem($row);
-    }
-    
-    private function rowToRespItem($row) {
-        return [
-            'symbol' => $row['netid'],
-            'name' => $row['description'],
-            'iconUrl' => $row['icon_url']
-        ];
+        return $th -> networks -> getNetwork($netid);
     }
 }
 

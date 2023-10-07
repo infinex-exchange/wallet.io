@@ -38,6 +38,13 @@ class Networks {
             }
         );
         
+        $promises[] = $this -> amqp -> method(
+            'getNetwork',
+            function($body) use($th) {
+                return $th -> getNetwork($body['netid']);
+            }
+        );
+        
         return Promise\all($promises) -> then(
             function() use($th) {
                 $th -> log -> info('Started networks manager');
@@ -99,6 +106,32 @@ class Networks {
     
     public function netIdToSymbol($netid) {
         return $netid;
+    }
+    
+    public function getNetwork($netid) {
+        $task = [
+            ':netid' => $netid
+        ];
+        
+        $sql = 'SELECT netid,
+                       description,
+                       icon_url
+                FROM networks
+                WHERE netid = :netid';
+        
+        $q = $this -> pdo -> prepare($sql);
+        $q -> execute($task);
+        $row = $q -> fetch();
+        
+        return $this -> rowToNetworkItem($row);
+    }
+    
+    public function rowToNetworkItem($row) {
+        return [
+            'symbol' => $row['netid'],
+            'name' => $row['description'],
+            'iconUrl' => $row['icon_url']
+        ];
     }
     
     private function validateNetworkSymbol($symbol) {
