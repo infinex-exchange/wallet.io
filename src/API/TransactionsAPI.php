@@ -58,15 +58,19 @@ class WithdrawalAPI {
             
             return $th -> transactions -> getTransactions($body) -> then(
                 function($resp) use($th) {
-                    $publicTxs = [];
+                    $promises = [];
                     
-                    foreach($resp['transactions'] as $tx)
-                        $publicTxs[] = $th -> privTxToPubTxRecord($tx);
+                    foreach($resp['transactions'] as $privTx)
+                        $promises[] = $th -> privTxToPubTxRecord($privTx);
                     
-                    return [
-                        'transactions' => $publicTxs,
-                        'more' => $resp['more']
-                    ];
+                    return Promise\all($promises) -> then(
+                        function($pubTxs) use($resp) {
+                            return [
+                                'transactions' => $pubTxs,
+                                'more' => $resp['more']
+                            ];
+                        }
+                    );
                 }
             );
         });
@@ -86,10 +90,24 @@ class WithdrawalAPI {
     }
     
     private function privTxToPubTxRecord($priv) {
-        return [
-            'xid' => $priv['xid'],
-            'asset' // need promise for this
-        ];
+        $th = $this;
+        
+        return $this -> amqp -> call(
+            'wallet.wallet',
+            'assetIdToSymbol',
+            [ 'assetid' => $priv['assetid'] ]
+        ) -> then(function($assetSymbol) use($th, $priv) {
+            if($priv['netid'])
+                $netSymbol = $th -> networks -> netIdToSymbol($priv['netid']);
+            else
+                $netSymbol = null;
+            
+            return [
+                'xid' => $priv['xid'],
+                'asset' => $assetSymbol,
+                'network' => $netSymbol
+            ];
+        });
     }
 }
 
