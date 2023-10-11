@@ -9,6 +9,7 @@ require __DIR__.'/Transactions.php';
 require __DIR__.'/API/NetworksAPI.php';
 require __DIR__.'/API/DepositAPI.php';
 require __DIR__.'/API/WithdrawalAPI.php';
+require __DIR__.'/API/TransactionsAPI.php';
 
 use React\Promise;
 
@@ -24,6 +25,7 @@ class App extends Infinex\App\App {
     private $networksApi;
     private $depositApi;
     private $withdrawalApi;
+    private $transactionsApi;
     private $rest;
     
     function __construct() {
@@ -93,13 +95,21 @@ class App extends Infinex\App\App {
             $this -> an
         );
         
+        $this -> transactionsApi = new TransactionsAPI(
+            $this -> log,
+            $this -> amqp,
+            $this -> transactions,
+            $this -> networks
+        );
+        
         $this -> rest = new Infinex\API\REST(
             $this -> log,
             $this -> amqp,
             [
                 $this -> networksApi,
                 $this -> depositApi,
-                $this -> withdrawalApi
+                $this -> withdrawalApi,
+                $this -> transactionsApi
             ]
         );
     }
