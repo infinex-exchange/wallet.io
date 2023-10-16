@@ -1,6 +1,7 @@
 <?php
 
 use Infinex\Exceptions\Error;
+use Infinex\Pagination;
 use React\Promise;
 
 class Networks {
@@ -22,27 +23,13 @@ class Networks {
         $promises = [];
         
         $promises[] = $this -> amqp -> method(
-            'symbolToNetId',
-            function($body) use($th) {
-                return $th -> symbolToNetId(
-                    $body['symbol'],
-                    $body['allowDisabled']
-                );
-            }
-        );
-        
-        $promises[] = $this -> amqp -> method(
-            'netIdToSymbol',
-            function($body) use($th) {
-                return $th -> netIdToSymbol($body['netid']);
-            }
+            'getNetworks',
+            [$this, 'getNetworks']
         );
         
         $promises[] = $this -> amqp -> method(
             'getNetwork',
-            function($body) use($th) {
-                return $th -> getNetwork($body['netid']);
-            }
+            [$this, 'getNetwork']
         );
         
         return Promise\all($promises) -> then(
@@ -62,8 +49,8 @@ class Networks {
         
         $promises = [];
         
-        $promises[] = $this -> amqp -> unreg('symbolToNetId');
-        $promises[] = $this -> amqp -> unreg('netIdToSymbol');
+        $promises[] = $this -> amqp -> unreg('getNetworks');
+        $promises[] = $this -> amqp -> unreg('getNetwork');
         
         return Promise\all($promises) -> then(
             function() use ($th) {
@@ -76,42 +63,71 @@ class Networks {
         );
     }
     
-    public function symbolToNetId($symbol, $allowDisabled) {
-        // Nonsense function, but very important for future changes
+    public function getNetworks($body) {
+        if(isset($body['assetid']) && !is_string($body['assetid']))
+            throw new Error('VALIDATION_ERROR', 'assetid');
+        if(isset($body['enabled']) && !is_bool($body['enabled']))
+            throw new Error('VALIDATION_ERROR', 'enabled');
         
-        if(!$this -> validateNetworkSymbol($symbol))
-            throw new Error('VALIDATION_ERROR', 'Invalid network symbol', 400);
+        $pag = new Pagination\Offset(50, 500, $query);
+    
+        $task = [];
+        
+        $sql = 'SELECT networks.netid,
+                       networks.description,
+                       networks.icon_url,
+                       networks.memo_name
+                FROM networks';
+        
+        if(isset($body['assetid'])) {
+            $task[':assetid'] = $body['assetid'];
+            $sql .= ', asset_network
+                     WHERE asset_network.netid = networks.netid
+                     AND asset_network.assetid = :assetid';
             
-        $task = array(
-            ':symbol' => $symbol
-        );
+            if(@$body['enabled'])
+                $sql .= ' AND asset_network.enabled = TRUE';
+        }
+        else
+            $sql .= ' WHERE 1=1';
         
-        $sql = 'SELECT netid,
-                       enabled
-                FROM networks
-                WHERE netid = :symbol';
+        if(@$body['enabled'])
+            $sql .= ' AND networks.enabled = TRUE';
+        
+        $sql .= ' ORDER BY networks.netid ASC'
+             . $pag -> sql();
         
         $q = $this -> pdo -> prepare($sql);
         $q -> execute($task);
-        $row = $q -> fetch();
-            
-        if(!$row)
-            throw new Error('NOT_FOUND', 'Network '.$symbol.' not found', 404);
         
-        if(!$allowDisabled && !$row['enabled'])
-            throw new Error('FORBIDDEN', 'Network '.$symbol.' is disabled', 403);
+        $networks = [];
         
-        return $row['netid'];
-    }
-    
-    public function netIdToSymbol($netid) {
-        return $netid;
+        while($row = $q -> fetch()) {
+            if($pag -> iter()) break;
+            $networks[] = $this -> rtrNetwork($row);
+        }
+        
+        return [
+            'networks' => $networks,
+            'more' => $pag -> more
+        ];
     }
     
     public function getNetwork($netid) {
-        $task = [
-            ':netid' => $netid
-        ];
+        if(isset($body['netid']) && isset($body['symbol']))
+            throw new Error('ARGUMENTS_CONFLICT', 'Both netid and symbol are set');
+        else if(isset($body['netid'])) {
+            if(!$this -> validateNetworkSymbol($body['netid']))
+                throw new Error('VALIDATION_ERROR', 'netid');
+            $dispNet = $body['netid'];
+        }
+        else if(isset($body['symbol'])) {
+            if(!$this -> validateNetworkSymbol($body['symbol']))
+                throw new Error('VALIDATION_ERROR', 'symbol', 400);
+            $dispNet = $body['symbol'];
+        }
+        
+        $task = [];
         
         $sql = 'SELECT netid,
                        description,

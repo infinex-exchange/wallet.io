@@ -1,8 +1,9 @@
 <?php
 
 use Infinex\Exceptions\Error;
+use React\Promise;
 
-class WithdrawalAPI {
+class TransactionsAPI {
     private $log;
     private $amqp;
     private $transactions;
@@ -20,6 +21,7 @@ class WithdrawalAPI {
     public function initRoutes($rc) {
         $rc -> get('/transactions', [$this, 'getAllTransactions']);
         $rc -> get('/transactions/{xid}', [$this, 'getTransaction']);
+        $rc -> delete('/transactions/{xid}', [$this, 'cancelTransaction']);
         $rc -> post('/transactions', [$this, 'createTransaction']);
     }
     
@@ -81,7 +83,8 @@ class WithdrawalAPI {
             throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
         
         return $th -> transactions -> getTransaction([
-            'xid' => $path['xid']
+            'xid' => $path['xid'],
+            'uid' => $auth['uid']
         ]) -> then(
             function($tx) use($th) {
                 return $th -> privTxToPubTxRecord($tx);
