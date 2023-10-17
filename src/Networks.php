@@ -67,7 +67,7 @@ class Networks {
         if(isset($body['enabled']) && !is_bool($body['enabled']))
             throw new Error('VALIDATION_ERROR', 'enabled');
         
-        $pag = new Pagination\Offset(50, 500, $query);
+        $pag = new Pagination\Offset(50, 500, $body);
     
         $task = [];
         
@@ -87,8 +87,10 @@ class Networks {
                 FROM networks
                 WHERE 1=1';
         
-        if(@$body['enabled'])
-            $sql .= ' AND networks.enabled = TRUE';
+        if(isset($body['enabled'])) {
+            $task[':enabled'] = $body['enabled'] ? 1 : 0;
+            $sql .= ' AND enabled = :enabled';
+        }
         
         $sql .= ' ORDER BY netid ASC'
              . $pag -> sql();
@@ -160,86 +162,6 @@ class Networks {
         
         return $this -> rtrNetwork($row);
     }
-    
-    /*public function getNetworks($body) {
-        if(isset($body['assetid']) && !is_string($body['assetid']))
-            throw new Error('VALIDATION_ERROR', 'assetid');
-        if(isset($body['enabled']) && !is_bool($body['enabled']))
-            throw new Error('VALIDATION_ERROR', 'enabled');
-        
-        $pag = new Pagination\Offset(50, 500, $query);
-    
-        $task = [];
-        
-        $sql = 'SELECT networks.netid,
-                       networks.description,
-                       networks.icon_url,
-                       networks.memo_name
-                FROM networks';
-        
-        if(isset($body['assetid'])) {
-            $task[':assetid'] = $body['assetid'];
-            $sql .= ', asset_network
-                     WHERE asset_network.netid = networks.netid
-                     AND asset_network.assetid = :assetid';
-            
-            if(@$body['enabled'])
-                $sql .= ' AND asset_network.enabled = TRUE';
-        }
-        else
-            $sql .= ' WHERE 1=1';
-        
-        if(@$body['enabled'])
-            $sql .= ' AND networks.enabled = TRUE';
-        
-        $sql .= ' ORDER BY networks.netid ASC'
-             . $pag -> sql();
-        
-        $q = $this -> pdo -> prepare($sql);
-        $q -> execute($task);
-        
-        $networks = [];
-        
-        while($row = $q -> fetch()) {
-            if($pag -> iter()) break;
-            $networks[] = $this -> rtrNetwork($row);
-        }
-        
-        return [
-            'networks' => $networks,
-            'more' => $pag -> more
-        ];
-    }
-    
-    public function getNetwork($netid) {
-        if(isset($body['netid']) && isset($body['symbol']))
-            throw new Error('ARGUMENTS_CONFLICT', 'Both netid and symbol are set');
-        else if(isset($body['netid'])) {
-            if(!$this -> validateNetworkSymbol($body['netid']))
-                throw new Error('VALIDATION_ERROR', 'netid');
-            $dispNet = $body['netid'];
-        }
-        else if(isset($body['symbol'])) {
-            if(!$this -> validateNetworkSymbol($body['symbol']))
-                throw new Error('VALIDATION_ERROR', 'symbol', 400);
-            $dispNet = $body['symbol'];
-        }
-        
-        $task = [];
-        
-        $sql = 'SELECT netid,
-                       description,
-                       icon_url,
-                       memo_name
-                FROM networks
-                WHERE netid = :netid';
-        
-        $q = $this -> pdo -> prepare($sql);
-        $q -> execute($task);
-        $row = $q -> fetch();
-        
-        return $this -> rowToNetworkItem($row);
-    }*/
     
     private function ptpNetwork($row) {
         return [
