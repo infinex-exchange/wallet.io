@@ -161,7 +161,7 @@ class Networks {
         }
         else {
             $task[':symbol'] = $body['symbol'];
-            $sql .= ' WHERE symbol = :symbol';
+            $sql .= ' WHERE netid = :symbol';
             $dispNet = $body['symbol'];
         }
         
