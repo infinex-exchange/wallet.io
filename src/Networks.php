@@ -327,7 +327,7 @@ class Networks {
     private function rtrAnPair($row, $network) {
         return [
             'assetid' => $row['assetid'],
-            'prec' => $row['prec']
+            'prec' => $row['prec'],
             'wdFeeBase' => $row['wd_fee_base'],
             'enabled' => $row['enabled'],
             'contract' => $row['contract'],
