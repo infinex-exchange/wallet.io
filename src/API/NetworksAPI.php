@@ -35,7 +35,7 @@ class NetworksAPI {
                     throw new Error('FORBIDDEN', 'Asset '.$query['asset'].' is out of service', 403);
                 
                 $resp = $th -> networks -> getAnPairs([
-                    'asset' => @$asset['assetid'],
+                    'assetid' => @$asset['assetid'],
                     'enabled' => true,
                     'enabledNetwork' => true,
                     'offset' => @$query['offset'],
