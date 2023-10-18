@@ -266,7 +266,7 @@ class Networks {
         if(!is_string($body['netid']))
             throw new Error('VALIDATION_ERROR', 'netid');
         
-        $network : $this -> getNetwork([ 'netid' => $body['netid'] ]);
+        $network = $this -> getNetwork([ 'netid' => $body['netid'] ]);
         
         $task = [
             ':assetid' => $body['assetid'],
