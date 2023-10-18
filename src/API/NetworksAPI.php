@@ -1,21 +1,18 @@
 <?php
 
 use Infinex\Exceptions\Error;
-use Infinex\Pagination;
 use React\Promise;
 
 class NetworksAPI {
     private $log;
     private $pdo;
     private $networks;
-    private $an;
     
-    function __construct($log, $amqp, $pdo, $networks, $an) {
+    function __construct($log, $amqp, $pdo, $networks) {
         $this -> log = $log;
         $this -> amqp = $amqp;
         $this -> pdo = $pdo;
         $this -> networks = $networks;
-        $this -> an = $an;
         
         $this -> log -> debug('Initialized networks API');
     }
@@ -29,62 +26,61 @@ class NetworksAPI {
         $th = $this;
         
         if(isset($query['asset']))
-            $promise = $this -> amqp -> call(
+            return $this -> amqp -> call(
                 'wallet.wallet',
-                'symbolToAssetId',
-                [
-                    'symbol' => $query['asset'],
-                    'allowDisabled' => false
-                ]
-            );
-        else
-            $promise = Promise\resolve(null);
+                'getAsset',
+                [ 'symbol' => $query['asset'] ]
+            ) -> then(function($asset) use($th, $query) {
+                if(!$asset['enabled'])
+                    throw new Error('FORBIDDEN', 'Asset '.$query['asset'].' is out of service', 403);
+                
+                $resp = $th -> networks -> getAnPairs([
+                    'asset' => @$asset['assetid'],
+                    'enabled' => true,
+                    'enabledNetwork' => true,
+                    'offset' => @$query['offset'],
+                    'limit' => @$queryp['limit']
+                ]);
+                
+                $networks = [];
+                foreach($resp['an'] as $k => $v)
+                    $networks[$k] = $this -> ptpNetwork($v['network']);
+                
+                return [
+                    'networks' => $networks,
+                    'more' => $resp['more']
+                ];
+            });
         
-        return $promise -> then(function($assetid) use($th, $query) {
-            $pag = new Pagination\Offset(50, 500, $query);
+        $resp = $th -> networks -> getNetworks([
+            'enabled' => true,
+            'offset' => @$query['offset'],
+            'limit' => @$queryp['limit']
+        ]);
         
-            $task = [];
-            if($assetid)
-                $task[':assetid'] = $assetid;
-            
-            $sql = 'SELECT networks.netid,
-                           networks.description,
-                           networks.icon_url,
-                           networks.memo_name
-                    FROM networks';
-            
-            if($assetid)
-                $sql .= ', asset_network';
-            
-            $sql .= ' WHERE networks.enabled = TRUE';
-            
-            if($assetid)
-                $sql .= ' AND asset_network.netid = networks.netid
-                          AND asset_network.assetid = :assetid';
-            
-            $sql .= ' ORDER BY networks.netid ASC'
-                 . $pag -> sql();
-            
-            $q = $th -> pdo -> prepare($sql);
-            $q -> execute($task);
-            
-            $networks = [];
-            
-            while($row = $q -> fetch()) {
-                if($pag -> iter()) break;
-                $networks[] = $th -> networks -> rowToNetworkItem($row);
-            }
-            
-            return [
-                'networks' => $networks,
-                'more' => $pag -> more
-            ];
-        });
+        foreach($resp['networks'] as $k => $v)
+            $resp['networks'][$k] = $this -> ptpNetwork($v);
+        
+        return $resp;
     }
     
     public function getNetwork($path, $query, $body, $auth) {
-        $netid = $th -> networks -> symbolToNetId($path['symbol'], false);
-        return $th -> networks -> getNetwork($netid);
+        $network = $th -> networks -> getNetworks([
+            'symbol' => $path['symbol']
+        ]);
+        
+        if(!$network['enabled'])
+            throw new Error('FORBIDDEN', 'Network '.$path['symbol'].' is out of service', 403);
+        
+        return $this -> ptpNetwork($network);
+    }
+    
+    private function ptpNetwork($record) {
+        return [
+            'symbol' => $record['symbol'],
+            'name' => $record['symbol'],
+            'iconUrl' => $record['iconUrl']
+        ];
     }
 }
 

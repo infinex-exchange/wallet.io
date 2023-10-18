@@ -1,7 +1,6 @@
 <?php
 
 require __DIR__.'/Networks.php';
-require __DIR__.'/AssetNetwork.php';
 require __DIR__.'/DepositAddr.php';
 require __DIR__.'/Withdrawals.php';
 require __DIR__.'/Transactions.php';
@@ -17,7 +16,6 @@ class App extends Infinex\App\App {
     private $pdo;
     
     private $networks;
-    private $an;
     private $depositAddr;
     private $withdrawals;
     private $transactions;
@@ -46,13 +44,6 @@ class App extends Infinex\App\App {
             $this -> pdo
         );
         
-        $this -> an = new AssetNetwork(
-            $this -> log,
-            $this -> amqp,
-            $this -> pdo,
-            $this -> networks
-        );
-        
         $this -> depositAddr = new DepositAddr(
             $this -> log,
             $this -> amqp,
@@ -75,15 +66,13 @@ class App extends Infinex\App\App {
             $this -> log,
             $this -> amqp,
             $this -> pdo,
-            $this -> networks,
-            $this -> an
+            $this -> networks
         );
         
-        $this -> depositApi = new DepositAPI(
+        /*$this -> depositApi = new DepositAPI(
             $this -> log,
             $this -> pdo,
-            $this -> depositAddr,
-            $this -> an
+            $this -> depositAddr
         );
         
         $this -> withdrawalApi = new WithdrawalAPI(
@@ -100,16 +89,16 @@ class App extends Infinex\App\App {
             $this -> amqp,
             $this -> transactions,
             $this -> networks
-        );
+        );*/
         
         $this -> rest = new Infinex\API\REST(
             $this -> log,
             $this -> amqp,
             [
                 $this -> networksApi,
-                $this -> depositApi,
+                /*$this -> depositApi,
                 $this -> withdrawalApi,
-                $this -> transactionsApi
+                $this -> transactionsApi*/
             ]
         );
     }
@@ -131,10 +120,6 @@ class App extends Infinex\App\App {
             }
         ) -> then(
             function() use($th) {
-                return $th -> an -> start();
-            }
-        ) -> then(
-            function() use($th) {
                 return $th -> rest -> start();
             }
         ) -> catch(
@@ -148,10 +133,6 @@ class App extends Infinex\App\App {
         $th = $this;
         
         $th -> rest -> stop() -> then(
-            function() use($th) {
-                return $th -> an -> stop();
-            }
-        ) -> then(
             function() use($th) {
                 return Promise\all([
                     $th -> networks -> stop(),
