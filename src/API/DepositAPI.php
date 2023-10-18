@@ -6,13 +6,13 @@ class DepositAPI {
     private $log;
     private $pdo;
     private $depositAddr;
-    private $an;
+    private $networks;
     
-    function __construct($log, $pdo, $depositAddr, $an) {
+    function __construct($log, $pdo, $depositAddr, $networks) {
         $this -> log = $log;
         $this -> pdo = $pdo;
         $this -> depositAddr = $depositAddr;
-        $this -> an = $an;
+        $this -> networks = $networks;
         
         $this -> log -> debug('Initialized deposit API');
     }
@@ -27,63 +27,50 @@ class DepositAPI {
         if(!$auth)
             throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
         
-        return $this -> an -> resolveAssetNetworkPair(
-            $path['asset'],
-            $path['network'],
-            false
-        ) -> then(function($pairing) use($th, $auth) {
-            // Get network details
-        
-            $task = [
-                ':netid' => $pairing['netid']
-            ];
+        return $this -> amqp -> call(
+            'wallet.wallet',
+            'getAsset',
+            [ 'symbol' => $path['asset'] ]
+        ) -> then(function($asset) use($th, $path, $auth) {
+            // Asset cheks
+            if(!$asset['enabled'])
+                throw new Error('FORBIDDEN', 'Asset '.$path['asset'].' is out of service', 403);
             
-            $sql = 'SELECT confirms_target,
-                           memo_name,
-                           native_qr_format,
-                           token_qr_format,
-                           deposit_warning,
-                           block_deposits_msg
-                    FROM networks
-                    WHERE netid = :netid';
+            // Get AN
+            $an = $th -> networks -> getAnPair([
+                'networkSymbol' => $path['symbol'],
+                'assetid' => $asset['assetid']
+            ]);
             
-            $q = $th -> pdo -> prepare($sql);
-            $q -> execute($task);
-            $infoNet = $q -> fetch();
+            // Network checks
+            if(!$an['network']['enabled'])
+                throw new Error('FORBIDDEN', 'Network '.$path['network'].' is out of service', 403);
             
-            if($infoNet['block_deposits_msg'] !== null)
-                throw new Error('FORBIDDEN', $infoNet['block_deposits_msg'], 403);
-        
-            // Get asset_network details
+            if($an['network']['blockDepositsMsg'] !== null)
+                throw new Error('FORBIDDEN', $network['blockDepositsMsg'], 403);
             
-            $task = [
-                ':assetid' => $pairing['assetid'],
-                ':netid' => $pairing['netid']
-            ];
+            // AN checks
+            if($an['enabled'])
+                throw new Error('FORBIDDEN', 'Network '.$path['network'].' is out of service for '.$path['asset'], 403);
             
-            $sql = 'SELECT contract,
-                           deposit_warning,
-                           block_deposits_msg
-                    FROM asset_network
-                    WHERE assetid = :assetid
-                    AND netid = :netid';
+            if($an['blockDepositsMsg'] !== null)
+                throw new Error('FORBIDDEN', $an['blockDepositsMsg'], 403);
             
-            $q = $th -> pdo -> prepare($sql);
-            $q -> execute($task);
-            $infoAn = $q -> fetch();
+            // Get deposit address
+            $address = $th -> depositAddr -> getSetDepositAddress([
+                'uid' => $auth['uid'],
+                'netid' => $an['network']['netid']
+            ]);
             
-            if($infoAn['block_deposits_msg'] !== null)
-                throw new Error('FORBIDDEN', $infoAn['block_deposits_msg'], 403);
-        
+            // Get shard
+            
+            // Shard checks
+            
             // Get minimal amount
             
             $minAmount = $th -> an -> getMinDepositAmount($pairing['assetid'], $pairing['netid']);
             
-            // Get deposit address
-            
-            $infoAddr = $th -> depositAddr -> getDepositAddr($auth['uid'], $pairing['netid']);
-            
-            // Get shard details
+            /* Get shard details
         
             $task = [
                 ':netid' => $pairing['netid'],
@@ -111,52 +98,51 @@ class DepositAPI {
             if($infoShard['block_deposits_msg'] !== null)
                 throw new Error('FORBIDDEN', $infoShard['block_deposits_msg'], 403);
             
-            $operating = time() - intval($infoShard['last_ping']) <= 5 * 60;
+            $operating = time() - intval($infoShard['last_ping']) <= 5 * 60;*/
         
             // Prepare response
-                
             $resp = [
-                'confirmTarget' => $infoNet['confirms_target'],
-                'memoName' => null,
-                'memo' => null,
+                'address' => $address['address'],
+                'memoName' => $an['network']['memoName'],
+                'memo' => $address['memo'],
+                'confirmTarget' => $an['network']['confirmTarget'],
+                'contract' => $an['contract'],
+                'minAmount' => $minAmount, ///////////////////////////
+                'operating' => $operating, //////////////////////////
                 'qrCode' => null,
-                'warnings' => [],
-                'operating' => $operating,
-                'contract' => $infoAn['contract'],
-                'address' => $infoAddr['address'],
-                'minAmount' => $minAmount
+                'warnings' => []
             ];
             
-            // Memo only if both set
-            if($infoNet['memo_name'] !== null && $infoAddr['memo'] !== null) {
-                $resp['memoName'] = $infoNet['memo_name'];
-                $resp['memo'] = $infoAddr['memo'];
-            }
-            
             // Qr code for native
-            if($infoAn['contract'] === NULL && $infoNet['native_qr_format'] !== NULL) {
-                $qrContent = $infoNet['native_qr_format'];
-                $qrContent = str_replace('{{ADDRESS}}', $infoAddr['address'], $qrContent);
-                $qrContent = str_replace('{{MEMO}}', $infoAddr['memo'], $qrContent);
+            if(
+                $asset['assetid'] == $an['network']['nativeAssetid'] &&
+                $an['network']['qrFormatNative'] !== NULL
+            ) {
+                $qrContent = $network['qrFormatNative'];
+                $qrContent = str_replace('{{ADDRESS}}', $address['address'], $qrContent);
+                $qrContent = str_replace('{{MEMO}}', $address['memo'], $qrContent);
                 $resp['qrCode'] = $qrContent;
             }
             
             // Qr code for token
-            else if($infoAn['contract'] !== NULL && $infoNet['token_qr_format'] !== NULL) {
-                $qrContent = $infoNet['token_qr_format'];
-                $qrContent = str_replace('{{ADDRESS}}', $infoAddr['address'], $qrContent);
-                $qrContent = str_replace('{{MEMO}}', $infoAddr['memo'], $qrContent);
-                $qrContent = str_replace('{{CONTRACT}}', $infoAn['contract'], $qrContent);
+            else if(
+                $asset['assetid'] != $an['network']['nativeAssetid'] &&
+                $an['network']['qrFormatToken'] !== NULL
+            ) {
+                $qrContent = $network['qrFormatToken'];
+                $qrContent = str_replace('{{ADDRESS}}', $address['address'], $qrContent);
+                $qrContent = str_replace('{{MEMO}}', $address['memo'], $qrContent);
+                $qrContent = str_replace('{{CONTRACT}}', $an['contract'], $qrContent);
                 $resp['qrCode'] = $qrContent;
             }
             
             // Warnings
-            if($infoNet['deposit_warning'] !== null)
-                $resp['warnings'][] = $infoNet['deposit_warning'];
-            if($infoAn['deposit_warning'] !== null)
-                $resp['warnings'][] = $infoAn['deposit_warning'];
-            if($infoShard['deposit_warning'] !== null)
-                $resp['warnings'][] = $infoShard['deposit_warning'];
+            if($an['network']['depositWarning'] !== null)
+                $resp['warnings'][] = $an['network']['depositWarning'];
+            if($an['depositWarning'] !== null)
+                $resp['warnings'][] = $an['depositWarning'];
+            /* TODO if($infoShard['deposit_warning'] !== null)
+                $resp['warnings'][] = $infoShard['deposit_warning'];*/
             
             return $resp;
         });

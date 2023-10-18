@@ -2,6 +2,7 @@
 
 use Infinex\Exceptions\Error;
 use Infinex\Pagination;
+use function Infinex\Math\trimFloat;
 use React\Promise;
 
 class Networks {
@@ -258,15 +259,14 @@ class Networks {
     public function getAnPair($body) {
         if(!isset($body['assetid']))
             throw new Error('MISSING_DATA', 'assetid');
-        if(!isset($body['netid']))
-            throw new Error('MISSING_DATA', 'netid');
         
         if(!is_string($body['assetid']))
             throw new Error('VALIDATION_ERROR', 'assetid');
-        if(!is_string($body['netid']))
-            throw new Error('VALIDATION_ERROR', 'netid');
         
-        $network = $this -> getNetwork([ 'netid' => $body['netid'] ]);
+        $network = $this -> getNetwork([
+            'netid' => @$body['netid'],
+            'symbol' => @$body['networkSymbol']
+        ]);
         
         $task = [
             ':assetid' => $body['assetid'],
@@ -328,17 +328,17 @@ class Networks {
         return [
             'assetid' => $row['assetid'],
             'prec' => $row['prec'],
-            'wdFeeBase' => $row['wd_fee_base'],
+            'wdFeeBase' => trimFloat($row['wd_fee_base']),
             'enabled' => $row['enabled'],
             'contract' => $row['contract'],
             'depositWarning' => $row['deposit_warning'],
             'withdrawalWarning' => $row['withdrawal_warning'],
             'blockDepositsMsg' => $row['block_deposits_msg'],
             'blockWithdrawalsMsg' => $row['block_withdrawals_msg'],
-            'minDeposit' => $row['min_deposit'],
-            'minWithdrawal' => $row['min_withdrawal'],
-            'wdFeeMin' => $row['wd_fee_min'],
-            'wdFeeMax' => $row['wd_fee_max'],
+            'minDeposit' => trimFloat($row['min_deposit']),
+            'minWithdrawal' => trimFloat($row['min_withdrawal']),
+            'wdFeeMin' => trimFloat($row['wd_fee_min']),
+            'wdFeeMax' => trimFloat($row['wd_fee_max']),
             'network' => $network
         ];
     }
