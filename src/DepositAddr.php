@@ -35,7 +35,7 @@ class DepositAddr {
         );
         
         $promises[] = $this -> amqp -> method(
-            'getDepositAddress',
+            'getSetDepositAddress',
             [$this, 'getSetDepositAddress']
         );
         
@@ -141,7 +141,7 @@ class DepositAddr {
             throw new Error('MISSING_DATA', 'addrid');
         
         if(!validateId($body['addrid']))
-            throw new Error('VALIDATION_ERROR', 'adbkid');
+            throw new Error('VALIDATION_ERROR', 'addrid');
         
         $task = [
             ':addrid' => $body['addrid']
