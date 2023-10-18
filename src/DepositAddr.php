@@ -170,7 +170,7 @@ class DepositAddr {
         if(!isset($body['uid']))
             throw new Error('MISSING_DATA', 'uid');
         if(!isset($body['netid']))
-            throw new Error('MISSING_DATA', 'uid');
+            throw new Error('MISSING_DATA', 'netid');
         
         if(!validateId($body['uid']))
             throw new Error('VALIDATION_ERROR', 'uid');
