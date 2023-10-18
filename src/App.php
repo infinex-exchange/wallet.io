@@ -1,6 +1,7 @@
 <?php
 
 require __DIR__.'/Networks.php';
+require __DIR__.'/Shards.php';
 require __DIR__.'/DepositAddr.php';
 require __DIR__.'/Withdrawals.php';
 require __DIR__.'/Transactions.php';
@@ -16,6 +17,7 @@ class App extends Infinex\App\App {
     private $pdo;
     
     private $networks;
+    private $shards;
     private $depositAddr;
     private $withdrawals;
     private $transactions;
@@ -39,6 +41,12 @@ class App extends Infinex\App\App {
         );
         
         $this -> networks = new Networks(
+            $this -> log,
+            $this -> amqp,
+            $this -> pdo
+        );
+        
+        $this -> shards = new Shards(
             $this -> log,
             $this -> amqp,
             $this -> pdo
@@ -71,7 +79,10 @@ class App extends Infinex\App\App {
         
         /*$this -> depositApi = new DepositAPI(
             $this -> log,
+            $this -> amqp,
             $this -> pdo,
+            $this -> networks,
+            $this -> shards,
             $this -> depositAddr
         );
         
@@ -114,6 +125,7 @@ class App extends Infinex\App\App {
             function() use($th) {
                 return Promise\all([
                     $th -> networks -> start(),
+                    $th -> shards -> start(),
                     $th -> depositAddr -> start(),
                     $th -> withdrawals -> start()
                 ]);
@@ -136,6 +148,7 @@ class App extends Infinex\App\App {
             function() use($th) {
                 return Promise\all([
                     $th -> networks -> stop(),
+                    $th -> shards -> stop(),
                     $th -> depositAddr -> stop(),
                     $th -> withdrawals -> stop()
                 ]);

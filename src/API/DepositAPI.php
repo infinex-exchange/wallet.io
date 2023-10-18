@@ -4,15 +4,19 @@ use Infinex\Exceptions\Error;
 
 class DepositAPI {
     private $log;
+    private $amqp;
     private $pdo;
-    private $depositAddr;
     private $networks;
+    private $shards;
+    private $depositAddr;
     
-    function __construct($log, $pdo, $depositAddr, $networks) {
+    function __construct($log, $amqp, $pdo, $networks, $shards, $depositAddr) {
         $this -> log = $log;
+        $this -> amqp = $amqp;
         $this -> pdo = $pdo;
-        $this -> depositAddr = $depositAddr;
         $this -> networks = $networks;
+        $this -> shards = $shards;
+        $this -> depositAddr = $depositAddr;
         
         $this -> log -> debug('Initialized deposit API');
     }
@@ -63,42 +67,20 @@ class DepositAPI {
             ]);
             
             // Get shard
+            $shard = $th -> shards -> getShard([
+                'netid' => $an['network']['netid'],
+                'shardno' => $address['shardno']
+            ]);
             
             // Shard checks
+            if($shard['blockDepositsMsg'] !== null)
+                throw new Error('FORBIDDEN', $shard['blockDepositsMsg'], 403);
             
             // Get minimal amount
             
             $minAmount = $th -> an -> getMinDepositAmount($pairing['assetid'], $pairing['netid']);
             
-            /* Get shard details
-        
-            $task = [
-                ':netid' => $pairing['netid'],
-                ':shardno' => $infoAddr['shardno']
-            ];
-            
-            $sql = 'SELECT wallet_shards.deposit_warning,
-                           wallet_shards.block_deposits_msg,
-                           EXTRACT(epoch FROM MAX(wallet_nodes.last_ping)) AS last_ping
-                    FROM wallet_shards,
-                         wallet_nodes
-                    WHERE wallet_nodes.netid = wallet_shards.netid
-                    AND wallet_nodes.shardno = wallet_shards.shardno
-                    AND wallet_shards.netid = :netid
-                    AND wallet_shards.shardno = :shardno
-                    GROUP BY wallet_shards.netid,
-                             wallet_shards.shardno,
-                             wallet_shards.deposit_warning,
-                             wallet_shards.block_deposits_msg';
-            
-            $q = $th -> pdo -> prepare($sql);
-            $q -> execute($task);
-            $infoShard = $q -> fetch();
-            
-            if($infoShard['block_deposits_msg'] !== null)
-                throw new Error('FORBIDDEN', $infoShard['block_deposits_msg'], 403);
-            
-            $operating = time() - intval($infoShard['last_ping']) <= 5 * 60;*/
+            $operating = time() - intval($infoShard['last_ping']) <= 5 * 60;
         
             // Prepare response
             $resp = [
@@ -141,8 +123,8 @@ class DepositAPI {
                 $resp['warnings'][] = $an['network']['depositWarning'];
             if($an['depositWarning'] !== null)
                 $resp['warnings'][] = $an['depositWarning'];
-            /* TODO if($infoShard['deposit_warning'] !== null)
-                $resp['warnings'][] = $infoShard['deposit_warning'];*/
+            if($shard['depositWarning'] !== null)
+                $resp['warnings'][] = $shard['depositWarning'];
             
             return $resp;
         });
