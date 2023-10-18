@@ -123,7 +123,7 @@ class Networks {
         ];
     }
     
-    public function getNetwork($netid) {
+    public function getNetwork($body) {
         if(isset($body['netid']) && isset($body['symbol']))
             throw new Error('ARGUMENTS_CONFLICT', 'Both netid and symbol are set');
         else if(isset($body['netid'])) {
@@ -255,7 +255,7 @@ class Networks {
         ];
     }
     
-    public function getAnPair($netid) {
+    public function getAnPair($body) {
         if(!isset($body['assetid']))
             throw new Error('MISSING_DATA', 'assetid');
         if(!isset($body['netid']))
