@@ -71,6 +71,8 @@ class DepositAddr {
     }
     
     public function getDepositAddresses($body) {
+        if(!is_array($body)) $body = [];
+        
         if(isset($body['netid']) && !is_string($body['netid']))
             throw new Error('VALIDATION_ERROR', 'netid');
         if(isset($body['shardno']) && !validateId($body['shardno']))
