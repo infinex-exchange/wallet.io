@@ -91,7 +91,7 @@ class Transactions {
                 $body['type'] = [ $body['type'] ];
             
             foreach($body['type'] as $type)
-                if(!in_array($body['type'], $this -> allowedTypes))
+                if(!in_array($type, $this -> allowedTypes))
                     throw new Error(
                         'VALIDATION_ERROR',
                         'Allowed types: '.implode(', ', $this -> allowedTypes),
@@ -107,7 +107,7 @@ class Transactions {
                 $body['status'] = [ $body['status'] ];
             
             foreach($body['status'] as $status)
-                if(!in_array($body['status'], $this -> allowedStatus))
+                if(!in_array($status, $this -> allowedStatus))
                     throw new Error(
                         'VALIDATION_ERROR',
                         'Allowed statuses: '.implode(', ', $this -> allowedStatus),
