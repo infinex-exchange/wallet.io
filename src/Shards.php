@@ -9,6 +9,7 @@ class Shards {
     private $log;
     private $amqp;
     private $pdo;
+    private $nodes;
     
     function __construct($log, $amqp, $pdo) {
         $this -> log = $log;
@@ -16,6 +17,10 @@ class Shards {
         $this -> pdo = $pdo;
         
         $this -> log -> debug('Initialized wallet shards manager');
+    }
+    
+    public function setNodes($nodes) {
+        $this -> nodes = $nodes;
     }
     
     public function start() {
@@ -144,13 +149,16 @@ class Shards {
     }
     
     private function rtrShard($row) {
-        return [
-            'netid' => $row['netid'],
-            'shardno' => $row['shardno'],
-            'depositWarning' => $row['deposit_warning'],
-            'blockDepositsMsg' => $row['block_deposits_msg'],
-            'blockWithdrawalsMsg' => $row['block_withdrawals_msg']
-        ];
+        return array_merge(
+            [
+                'netid' => $row['netid'],
+                'shardno' => $row['shardno'],
+                'depositWarning' => $row['deposit_warning'],
+                'blockDepositsMsg' => $row['block_deposits_msg'],
+                'blockWithdrawalsMsg' => $row['block_withdrawals_msg']
+            ],
+            $this -> nodes -> getOperatingStatus($row['netid'], $row['shardno'])
+        );
     }
 }
 

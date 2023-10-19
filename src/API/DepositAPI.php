@@ -9,14 +9,24 @@ class DepositAPI {
     private $networks;
     private $shards;
     private $depositAddr;
+    private $deposits;
     
-    function __construct($log, $amqp, $pdo, $networks, $shards, $depositAddr) {
+    function __construct(
+        $log,
+        $amqp,
+        $pdo,
+        $networks,
+        $shards,
+        $depositAddr,
+        $deposits
+    ) {
         $this -> log = $log;
         $this -> amqp = $amqp;
         $this -> pdo = $pdo;
         $this -> networks = $networks;
         $this -> shards = $shards;
         $this -> depositAddr = $depositAddr;
+        $this -> deposits = $deposits;
         
         $this -> log -> debug('Initialized deposit API');
     }
@@ -72,15 +82,8 @@ class DepositAPI {
                 'shardno' => $address['shardno']
             ]);
             
-            // Shard checks
-            if($shard['blockDepositsMsg'] !== null)
-                throw new Error('FORBIDDEN', $shard['blockDepositsMsg'], 403);
-            
             // Get minimal amount
-            
-            $minAmount = $th -> an -> getMinDepositAmount($pairing['assetid'], $pairing['netid']);
-            
-            $operating = time() - intval($infoShard['last_ping']) <= 5 * 60;
+            $minAmount = $th -> deposits -> resolveMinDepositAmount($asset, $an);
         
             // Prepare response
             $resp = [
@@ -89,8 +92,8 @@ class DepositAPI {
                 'memo' => $address['memo'],
                 'confirmTarget' => $an['network']['confirmTarget'],
                 'contract' => $an['contract'],
-                'minAmount' => $minAmount, ///////////////////////////
-                'operating' => $operating, //////////////////////////
+                'minAmount' => $minAmount,
+                'operating' => $shard['operating'],
                 'qrCode' => null,
                 'warnings' => []
             ];

@@ -2,9 +2,11 @@
 
 require __DIR__.'/Networks.php';
 require __DIR__.'/Shards.php';
+require __DIR__.'/Nodes.php';
 require __DIR__.'/DepositAddr.php';
 require __DIR__.'/Withdrawals.php';
 require __DIR__.'/Transactions.php';
+require __DIR__.'/Deposits.php';
 
 require __DIR__.'/API/NetworksAPI.php';
 require __DIR__.'/API/DepositAPI.php';
@@ -18,9 +20,11 @@ class App extends Infinex\App\App {
     
     private $networks;
     private $shards;
+    private $nodes;
     private $depositAddr;
     private $withdrawals;
     private $transactions;
+    private $deposits;
     
     private $networksApi;
     private $depositApi;
@@ -52,6 +56,14 @@ class App extends Infinex\App\App {
             $this -> pdo
         );
         
+        $this -> nodes = new Nodes(
+            $this -> log,
+            $this -> amqp,
+            $this -> pdo,
+            OPERATING_TIMEOUT
+        );
+        $this -> shards -> setNodes($this -> nodes);
+        
         $this -> depositAddr = new DepositAddr(
             $this -> log,
             $this -> amqp,
@@ -70,11 +82,18 @@ class App extends Infinex\App\App {
             $this -> pdo
         );
         
+        $this -> deposits = new Deposits(
+            $this -> log,
+            $this -> amqp,
+            $this -> pdo
+        );
+        
         $this -> networksApi = new NetworksAPI(
             $this -> log,
             $this -> amqp,
             $this -> pdo,
-            $this -> networks
+            $this -> networks,
+            $this -> deposits
         );
         
         /*$this -> depositApi = new DepositAPI(
@@ -126,8 +145,10 @@ class App extends Infinex\App\App {
                 return Promise\all([
                     $th -> networks -> start(),
                     $th -> shards -> start(),
+                    $th -> nodes -> start(),
                     $th -> depositAddr -> start(),
-                    $th -> withdrawals -> start()
+                    $th -> withdrawals -> start(),
+                    $th -> deposits -> start()
                 ]);
             }
         ) -> then(
@@ -149,8 +170,10 @@ class App extends Infinex\App\App {
                 return Promise\all([
                     $th -> networks -> stop(),
                     $th -> shards -> stop(),
+                    $th -> nodes -> stop(),
                     $th -> depositAddr -> stop(),
-                    $th -> withdrawals -> stop()
+                    $th -> withdrawals -> stop(),
+                    $th -> deposits -> start()
                 ]);
             }
         ) -> then(

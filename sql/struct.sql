@@ -43,9 +43,7 @@ GRANT SELECT ON asset_network TO "wallet.io";
 create table wallet_shards(
     netid varchar(32) not null,
     shardno int not null,
-    deposit_warning text default null,
-    block_deposits_msg text default null,
-    block_withdrawals boolean not null default FALSE
+    deposit_warning text default null
 );
 
 GRANT SELECT ON wallet_shards TO "wallet.io";

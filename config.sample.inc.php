@@ -19,4 +19,6 @@ define('DB_USER', 'wallet.io');
 define('DB_PASS', 'password');
 define('DB_NAME', 'wallet.io');
 
+define('OPERATING_TIMEOUT', 300);
+
 ?>
