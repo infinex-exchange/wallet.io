@@ -137,15 +137,32 @@ class DepositAddr {
     }
     
     public function getDepositAddress($body) {
-        if(!isset($body['addrid']))
-            throw new Error('MISSING_DATA', 'addrid');
+        if(isset($body['addrid']) && isset($body['address']))
+            throw new Error('ARGUMENTS_CONFLICT', 'addrid and address cannot be used together')
+        else if(isset($body['addrid'])) {
+            if(!validateId($body['addrid']))
+                throw new Error('VALIDATION_ERROR', 'addrid');
+            
+            $dispAddr = $body['addrid'];
+        }
+        else if(isset($body['address'])) {
+            if(!isset($body['netid']))
+                throw new Error('MISSING_DATA', 'netid is required if address is set');
+            
+            if(!is_string($body['address']))
+                throw new Error('VALIDATION_ERROR', 'address');
+            if(!is_string($body['netid']))
+                throw new Error('VALIDATION_ERROR', 'netid');
+            
+            if(isset($body['memo']) && !is_string($body['memo']))
+                throw new Error('VALIDATION_ERROR', 'memo');
+            
+            $dispAddr = $body['address'];
+        }
+        else
+            throw new Error('MISSING_DATA', 'addrid or address + netid + memo (optional)');
         
-        if(!validateId($body['addrid']))
-            throw new Error('VALIDATION_ERROR', 'addrid');
-        
-        $task = [
-            ':addrid' => $body['addrid']
-        ];
+        $task = [];
         
         $sql = 'SELECT addrid,
                        netid,
@@ -154,14 +171,30 @@ class DepositAddr {
                        memo,
                        uid
                 FROM deposit_addr
-                WHERE addrid = :addrid';
+                WHERE 1=1';
+        
+        if(isset($body['addrid'])) {
+            $task[':addrid'] = $body['addrid'];
+            $sql .= ' AND addrid = :addrid';
+        }
+        else {
+            $task[':address'] = $body['address'];
+            $task[':netid'] = $body['netid'];
+            $sql .= ' AND netid = :netid
+                      AND address = :address';
+            
+            if(array_key_exists('memo', $body)) {
+                $task[':memo'] = $body['memo'];
+                $sql .= ' AND memo IS NOT DISTINCT FROM :memo';
+            }
+        }
         
         $q = $this -> pdo -> prepare($sql);
         $q -> execute($task);
         $row = $q -> fetch();
         
         if(!$row)
-            throw new Error('NOT_FOUND', 'Address '.$body['addrid'].' not found');
+            throw new Error('NOT_FOUND', 'Address '.$dispAddr.' not found');
             
         return $this -> rtrAddress($row);
     }

@@ -5,7 +5,6 @@ use Infinex\Exceptions\Error;
 class DepositAPI {
     private $log;
     private $amqp;
-    private $pdo;
     private $networks;
     private $shards;
     private $depositAddr;
@@ -14,7 +13,6 @@ class DepositAPI {
     function __construct(
         $log,
         $amqp,
-        $pdo,
         $networks,
         $shards,
         $depositAddr,
@@ -22,7 +20,6 @@ class DepositAPI {
     ) {
         $this -> log = $log;
         $this -> amqp = $amqp;
-        $this -> pdo = $pdo;
         $this -> networks = $networks;
         $this -> shards = $shards;
         $this -> depositAddr = $depositAddr;

@@ -62,6 +62,7 @@ class App extends Infinex\App\App {
             $this -> pdo,
             OPERATING_TIMEOUT
         );
+        $this -> networks -> setNodes($this -> nodes);
         $this -> shards -> setNodes($this -> nodes);
         
         $this -> depositAddr = new DepositAddr(
@@ -73,7 +74,9 @@ class App extends Infinex\App\App {
         $this -> withdrawals = new Withdrawals(
             $this -> log,
             $this -> amqp,
-            $this -> pdo
+            $this -> pdo,
+            $this -> networks,
+            $this -> depositAddr
         );
         
         $this -> transactions = new Transactions(
@@ -99,23 +102,20 @@ class App extends Infinex\App\App {
         $this -> depositApi = new DepositAPI(
             $this -> log,
             $this -> amqp,
-            $this -> pdo,
             $this -> networks,
             $this -> shards,
             $this -> depositAddr,
             $this -> deposits
         );
         
-        /*$this -> withdrawalApi = new WithdrawalAPI(
+        $this -> withdrawalApi = new WithdrawalAPI(
             $this -> log,
             $this -> amqp,
-            $this -> pdo,
-            $this -> withdrawals,
             $this -> networks,
-            $this -> an
+            $this -> withdrawals
         );
         
-        $this -> transactionsApi = new TransactionsAPI(
+        /*$this -> transactionsApi = new TransactionsAPI(
             $this -> log,
             $this -> amqp,
             $this -> transactions,
@@ -128,8 +128,8 @@ class App extends Infinex\App\App {
             [
                 $this -> networksApi,
                 $this -> depositApi,
-                /*$this -> withdrawalApi,
-                $this -> transactionsApi*/
+                $this -> withdrawalApi
+                /*$this -> transactionsApi*/
             ]
         );
     }
@@ -148,9 +148,12 @@ class App extends Infinex\App\App {
                     $th -> shards -> start(),
                     $th -> nodes -> start(),
                     $th -> depositAddr -> start(),
-                    $th -> withdrawals -> start(),
                     $th -> deposits -> start()
                 ]);
+            }
+        ) -> then(
+            function() use($th) {
+                return $th -> withdrawals -> start();
             }
         ) -> then(
             function() use($th) {
@@ -168,12 +171,15 @@ class App extends Infinex\App\App {
         
         $th -> rest -> stop() -> then(
             function() use($th) {
+                return $th -> withdrawals -> stop();
+            }
+        ) -> then(
+            function() use($th) {
                 return Promise\all([
                     $th -> networks -> stop(),
                     $th -> shards -> stop(),
                     $th -> nodes -> stop(),
                     $th -> depositAddr -> stop(),
-                    $th -> withdrawals -> stop(),
                     $th -> deposits -> start()
                 ]);
             }

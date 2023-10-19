@@ -9,6 +9,7 @@ class Networks {
     private $log;
     private $amqp;
     private $pdo;
+    private $nodes;
     
     function __construct($log, $amqp, $pdo) {
         $this -> log = $log;
@@ -16,6 +17,10 @@ class Networks {
         $this -> pdo = $pdo;
         
         $this -> log -> debug('Initialized networks manager');
+    }
+    
+    public function setNodes($nodes) {
+        $this -> nodes = $nodes;
     }
     
     public function start() {
@@ -308,22 +313,25 @@ class Networks {
     }
     
     private function rtrNetwork($row) {
-        return [
-            'netid' => $row['netid'],
-            'symbol' => $row['netid'],
-            'name' => $row['description'],
-            'iconUrl' => $row['icon_url'],
-            'nativeAssetid' => $row['native_assetid'],
-            'confirmTarget' => $row['confirms_target'],
-            'enabled' => $row['enabled'],
-            'memoName' => $row['memo_name'],
-            'qrFormatNative' => $row['native_qr_format'],
-            'qrFormatToken' => $row['token_qr_format'],
-            'depositWarning' => $row['deposit_warning'],
-            'withdrawalWarning' => $row['withdrawal_warning'],
-            'blockDepositsMsg' => $row['block_deposits_msg'],
-            'blockWithdrawalsMsg' => $row['block_withdrawals_msg']
-        ];
+        return array_merge(
+            [
+                'netid' => $row['netid'],
+                'symbol' => $row['netid'],
+                'name' => $row['description'],
+                'iconUrl' => $row['icon_url'],
+                'nativeAssetid' => $row['native_assetid'],
+                'confirmTarget' => $row['confirms_target'],
+                'enabled' => $row['enabled'],
+                'memoName' => $row['memo_name'],
+                'qrFormatNative' => $row['native_qr_format'],
+                'qrFormatToken' => $row['token_qr_format'],
+                'depositWarning' => $row['deposit_warning'],
+                'withdrawalWarning' => $row['withdrawal_warning'],
+                'blockDepositsMsg' => $row['block_deposits_msg'],
+                'blockWithdrawalsMsg' => $row['block_withdrawals_msg']
+            ],
+            $this -> nodes -> getOperatingStatus($row['netid'])
+        );
     }
     
     private function rtrAnPair($row, $network) {

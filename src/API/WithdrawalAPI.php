@@ -2,23 +2,18 @@
 
 use Infinex\Exceptions\Error;
 use function Infinex\Math\trimFloat;
-use Decimal\Decimal;
 
 class WithdrawalAPI {
     private $log;
     private $amqp;
-    private $pdo;
-    private $withdrawals;
     private $networks;
-    private $an;
+    private $withdrawals;
     
-    function __construct($log, $amqp, $pdo, $withdrawals, $networks, $an) {
+    function __construct($log, $amqp, $networks, $withdrawals) {
         $this -> log = $log;
         $this -> amqp = $amqp;
-        $this -> pdo = $pdo;
-        $this -> withdrawals = $withdrawals;
         $this -> networks = $networks;
-        $this -> an = $an;
+        $this -> withdrawals = $withdrawals;
         
         $this -> log -> debug('Initialized withdrawal API');
     }
@@ -34,101 +29,57 @@ class WithdrawalAPI {
         if(!$auth)
             throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
         
-        return $this -> an -> resolveAssetNetworkPair(
-            $path['asset'],
-            $path['network'],
-            false
-        ) -> then(function($pairing) use($th) {
-            // Get network details
+        return $this -> amqp -> call(
+            'wallet.wallet',
+            'getAsset',
+            [ 'symbol' => $path['asset'] ]
+        ) -> then(function($asset) use($th, $path, $auth) {
+            // Asset cheks
+            if(!$asset['enabled'])
+                throw new Error('FORBIDDEN', 'Asset '.$path['asset'].' is out of service', 403);
+            
+            // Get AN
+            $an = $th -> networks -> getAnPair([
+                'networkSymbol' => $path['network'],
+                'assetid' => $asset['assetid']
+            ]);
+            
+            // Network checks
+            if(!$an['network']['enabled'])
+                throw new Error('FORBIDDEN', 'Network '.$path['network'].' is out of service', 403);
+            
+            if($an['network']['blockWithdrawalsMsg'] !== null)
+                throw new Error('FORBIDDEN', $network['blockWithdrawalsMsg'], 403);
+            
+            // AN checks
+            if(!$an['enabled'])
+                throw new Error('FORBIDDEN', 'Network '.$path['network'].' is out of service for '.$path['asset'], 403);
+            
+            if($an['blockWithdrawalsMsg'] !== null)
+                throw new Error('FORBIDDEN', $an['blockWithdrawalsMsg'], 403);
         
-            $task = [
-                ':netid' => $pairing['netid']
-            ];
-            
-            $sql = 'SELECT memo_name,
-                           withdrawal_warning,
-                           block_withdrawals_msg
-                    FROM networks
-                    WHERE netid = :netid';
-            
-            $q = $th -> pdo -> prepare($sql);
-            $q -> execute($task);
-            $infoNet = $q -> fetch();
-            
-            if($infoNet['block_withdrawals_msg'] !== null)
-                throw new Error('FORBIDDEN', $infoNet['block_withdrawals_msg'], 403);
+            // Get minimal amount
+            $minAmount = $th -> withdrawals -> resolveMinWithdrawalAmount($asset, $an);
         
-            // Get asset_network details
-            
-            $task = [
-                ':assetid' => $pairing['assetid'],
-                ':netid' => $pairing['netid']
-            ];
-            
-            $sql = 'SELECT contract,
-                           prec,
-                           wd_fee_base,
-                           wd_fee_min,
-                           wd_fee_max,
-                           withdrawal_warning,
-                           block_withdrawals_msg
-                    FROM asset_network
-                    WHERE assetid = :assetid
-                    AND netid = :netid';
-            
-            $q = $th -> pdo -> prepare($sql);
-            $q -> execute($task);
-            $infoAn = $q -> fetch();
-            
-            if($infoAn['block_withdrawals_msg'] !== null)
-                throw new Error('FORBIDDEN', $infoAn['block_withdrawals_msg'], 403);
-        
-            // Get min amount
-            
-            $minAmount = $th -> an -> getMinWithdrawalAmount($pairing['assetid'], $pairing['netid']);
-            
-            // Get nodes details
-        
-            $task = [
-                ':netid' => $pairing['netid']
-            ];
-            
-            $sql = 'SELECT EXTRACT(epoch FROM MAX(last_ping)) AS last_ping
-                    FROM wallet_nodes
-                    WHERE netid = :netid';
-            
-            $q = $th -> pdo -> prepare($sql);
-            $q -> execute($task);
-            $infoNodes = $q -> fetch();
-            
-            $operating = time() - intval($infoNodes['last_ping']) <= 5 * 60;
-        
-            // Prepare response
-        
-            $dFeeBase = new Decimal($infoAn['wd_fee_base']);
-            
-            $dFeeMin = new Decimal($infoAn['wd_fee_min']);
-            $dFeeMin += $dFeeBase;
-            
-            $dFeeMax = new Decimal($infoAn['wd_fee_max']);
-            $dFeeMax += $dFeeBase;
+            // Get fee min max
+            $feeRange = $th -> withdrawals -> resolveFeeRange($an);
                     
             $resp = [
-                'memoName' => $infoNet['memo_name'],
-                'warnings' => [],
-                'operating' => $operating,
-                'contract' => $infoAn['contract'],
-                'minAmount' => $minAmount,
-                'prec' => $infoAn['prec'],
-                'feeMin' => trimFloat($dFeeMin -> toFixed($infoAn['prec'])),
-                'feeMax' => trimFloat($dFeeMax -> toFixed($infoAn['prec']))
+                'memoName' => $an['network']['memoName'],
+                'contract' => $an['contract'],
+                'minAmount' => trimFloat($minAmount -> toFixed($asset['defaultPrec'])),
+                'feeMin' => trimFloat($feeRange['min'] -> toFixed($an['prec'])),
+                'feeMax' => trimFloat($feeRange['max'] -> toFixed($an['prec'])),
+                'prec' => $an['prec'],
+                'operating' => $an['network']['operating'],
+                'warnings' => []
             ];
             
             // Warnings
-            if($infoNet['withdrawal_warning'] !== null)
-                $resp['warnings'][] = $infoNet['withdrawal_warning'];
-            if($infoAn['withdrawal_warning'] !== null)
-                $resp['warnings'][] = $infoAn['withdrawal_warning'];
+            if($an['network']['withdrawalWarning'] !== null)
+                $resp['warnings'][] = $an['network']['withdrawalWarning'];
+            if($an['withdrawalWarning'] !== null)
+                $resp['warnings'][] = $an['withdrawalWarning'];
             
             return $resp;
         });
@@ -138,13 +89,15 @@ class WithdrawalAPI {
         if(!$auth)
             throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
         
-        $netid = $this -> networks -> symbolToNetId($path['network'], false);
+        $network = $this -> networks -> getNetwork([
+            'symbol' => $path['network']
+        ]);
             
-        return $this -> withdrawals -> validateWithdrawalTarget(
-            $netid,
-            isset($body['address']) ? $body['address'] : null,
-            isset($body['memo']) ? $body['memo'] : null
-        );
+        return $this -> withdrawals -> validateWithdrawalTarget([
+            'netid' => $network['netid'],
+            'address' => @$body['address'],
+            'memo' => @$body['memo']
+        ]);
     }
 }
 

@@ -72,7 +72,7 @@ class Nodes {
         
         if(isset($body['shardno'])) {
             if(!isset($body['netid']))
-                throw new Error('ARGUMENTS_CONFLICT', 'shardno is allowed only with netid');
+                throw new Error('MISSING_DATA', 'netid is required when shardno is set');
             
             if(!validateId($body['shardno']))
                 throw new Error('VALIDATION_ERROR', 'shardno');
