@@ -294,7 +294,7 @@ class Transactions {
             'netid' => $row['netid'],
             'amount' => trimFloat($row['amount']),
             'status' => $row['status'],
-            'createTime' => intval($row['createTime']),
+            'createTime' => intval($row['create_time']),
             'address' => $row['address'],
             'memo' => $row['memo'],
             'execTime' => $row['exec_time'] ? intval($row['exec_time']) : null,
