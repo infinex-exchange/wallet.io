@@ -150,7 +150,7 @@ class Transactions {
             $sql .= ' AND uid = :uid';
         }
         
-        if(!empty($body['type']) {
+        if(!empty($body['type'])) {
             $sql .= ' AND type IN(';
             
             foreach($i = 0; $i < count($body['type']); $i++) {
@@ -172,7 +172,7 @@ class Transactions {
             $sql .= ' AND netid = :netid';
         }
         
-        if(!empty($body['status']) {
+        if(!empty($body['status'])) {
             $sql .= ' AND status IN(';
             
             foreach($i = 0; $i < count($body['status']); $i++) {
