@@ -270,7 +270,7 @@ class Networks {
         
         $task = [
             ':assetid' => $body['assetid'],
-            ':netid' => $body['netid']
+            ':netid' => $network['netid']
         ];
         
         $sql = 'SELECT assetid,
@@ -295,12 +295,14 @@ class Networks {
         $q -> execute($task);
         $row = $q -> fetch();
         
-        if(!$row)
+        if(!$row) {
+            $dispNet = @$body['netid'] ? $body['netid'] : $body['networkSymbol'];
             throw new Error(
                 'NOT_FOUND',
-                'Network '.$body['netid'].' is not associated with asset '.$body['assetid'],
+                'Network '.$dispNet.' is not associated with asset '.$body['assetid'],
                 404
             );
+        }
         
         return $this -> rtrAnPair($row, $network);
     }
