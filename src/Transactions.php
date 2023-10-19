@@ -175,7 +175,7 @@ class Transactions {
         if(!empty($body['status'])) {
             $sql .= ' AND status IN(';
             
-            foreach($i = 0; $i < count($body['status']); $i++) {
+            for($i = 0; $i < count($body['status']); $i++) {
                 if($i > 0) $sql .= ',';
                 $task[':status'.$i] = $body['status'][$i];
                 $sql .= ':status'.$i;
