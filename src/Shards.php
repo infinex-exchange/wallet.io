@@ -81,7 +81,7 @@ class Shards {
                        shardno,
                        deposit_warning,
                        block_deposits_msg,
-                       block_withdrawals_msg
+                       block_withdrawals
                 FROM wallet_shards
                 WHERE 1=1';
         
@@ -130,7 +130,7 @@ class Shards {
                        shardno,
                        deposit_warning,
                        block_deposits_msg,
-                       block_withdrawals_msg
+                       block_withdrawals
                 FROM wallet_shards
                 WHERE netid = :netid
                 AND shardno = :shardno';
@@ -155,7 +155,7 @@ class Shards {
                 'shardno' => $row['shardno'],
                 'depositWarning' => $row['deposit_warning'],
                 'blockDepositsMsg' => $row['block_deposits_msg'],
-                'blockWithdrawalsMsg' => $row['block_withdrawals_msg']
+                'blockWithdrawals' => $row['block_withdrawals']
             ],
             $this -> nodes -> getOperatingStatus($row['netid'], $row['shardno'])
         );
