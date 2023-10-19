@@ -153,9 +153,9 @@ class Nodes {
             ':netid' => $netid
         ];
         
-        $sql .= 'SELECT EXTRACT(epoch FROM MAX(last_ping)) AS last_ping
-                 FROM wallet_nodes
-                 WHERE netid = :netid';
+        $sql = 'SELECT EXTRACT(epoch FROM MAX(last_ping)) AS last_ping
+                FROM wallet_nodes
+                WHERE netid = :netid';
         
         if($shardno) {
             $task[':shardno'] = $shardno;
