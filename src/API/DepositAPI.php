@@ -52,7 +52,7 @@ class DepositAPI {
             
             // Get AN
             $an = $th -> networks -> getAnPair([
-                'networkSymbol' => $path['symbol'],
+                'networkSymbol' => $path['network'],
                 'assetid' => $asset['assetid']
             ]);
             
