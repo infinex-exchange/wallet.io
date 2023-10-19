@@ -167,7 +167,7 @@ class Nodes {
         $row = $q -> fetch();
         
         return [
-            'lastPing' => $row['last_ping'],
+            'lastPing' => intval($row['last_ping']),
             'operating' => time() - intval($row['last_ping']) <= $this -> operatingTimeout
         ];
     }
@@ -177,7 +177,7 @@ class Nodes {
             'nodeid' => $row['nodeid'],
             'netid' => $row['netid'],
             'shardno' => $row['shardno'],
-            'lastPing' => $row['last_ping'],
+            'lastPing' => intval($row['last_ping']),
             'operating' => time() - intval($row['last_ping']) <= $this -> operatingTimeout
         ];
     }
