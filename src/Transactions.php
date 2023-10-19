@@ -94,7 +94,7 @@ class Transactions {
                 if(!in_array($body['type'], $this -> allowedTypes))
                     throw new Error(
                         'VALIDATION_ERROR',
-                        'Allowed types: '.implode(', '.$this -> allowedTypes),
+                        'Allowed types: '.implode(', ', $this -> allowedTypes),
                         400
                     );
         }
@@ -110,7 +110,7 @@ class Transactions {
                 if(!in_array($body['status'], $this -> allowedStatus))
                     throw new Error(
                         'VALIDATION_ERROR',
-                        'Allowed statuses: '.implode(', '.$this -> allowedStatus),
+                        'Allowed statuses: '.implode(', ', $this -> allowedStatus),
                         400
                     );
         }
