@@ -11,13 +11,13 @@ class Transactions {
     private $amqp;
     private $pdo;
     
-    private allowedTypes = [
+    private $allowedTypes = [
         'DEPOSIT',
         'WITHDRAWAL',
         'TRANSFER_IN',
         'TRANSFER_OUT'
     ];
-    private allowedStatus = [
+    private $allowedStatus = [
         'PENDING',
         'PROCESSING',
         'DONE',
