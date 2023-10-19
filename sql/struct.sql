@@ -32,10 +32,7 @@ create table asset_network(
     min_deposit decimal(65, 32) not null default 0,
     min_withdrawal decimal(65, 32) not null default 0,
     wd_fee_min decimal(65,32) not null default 1000000,
-    wd_fee_max decimal(65,32) not null default 1000000,
-    
-    foreign key(assetid) references assets(assetid),
-    foreign key(netid) references networks(netid)
+    wd_fee_max decimal(65,32) not null default 1000000
 );
 
 GRANT SELECT ON asset_network TO "wallet.io";
@@ -67,3 +64,30 @@ create table wallet_nodes(
 );
 
 GRANT SELECT, UPDATE ON wallet_nodes TO "wallet.io";
+
+create table wallet_transactions(
+    xid bigserial not null primary key,
+    uid bigint not null,
+    type varchar(32) not null,
+    assetid varchar(32) not null,
+    netid varchar(32),
+    amount decimal(65,32) not null,
+    status varchar(32) not null,
+    create_time timestamptz not null default current_timestamp,
+    address varchar(255),
+    memo varchar(255),
+    exec_time timestamptz null default null,
+    confirms int,
+    confirms_target int,
+    txid varchar(255),
+    height bigint,
+    wd_fee_this decimal(65,32),
+    wd_fee_native decimal(65,32),
+    bridge_issued smallint not null default 0,
+    send_mail bool not null default TRUE,
+    executor_lock bool not null default FALSE,
+    wd_fee_base decimal(65,32) default null
+);
+
+GRANT SELECT, INSERT, UPDATE ON wallet_transactions TO "wallet.io";
+GRANT SELECT, USAGE ON wallet_transactions_xid_seq TO "wallet.io";

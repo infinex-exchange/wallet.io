@@ -9,13 +9,21 @@ class TransactionsAPI {
     private $transactions;
     private $networks;
     
+    private $allowedStatus = [
+        'PENDING',
+        'PROCESSING',
+        'DONE',
+        'CANCEL_PENDING',
+        'CANCELED'
+    ];
+    
     function __construct($log, $amqp, $transactions, $networks) {
         $this -> log = $log;
         $this -> amqp = $amqp;
         $this -> transactions = $transactions;
         $this -> networks = $networks;
         
-        $this -> log -> debug('Initialized withdrawal API');
+        $this -> log -> debug('Initialized transactions API');
     }
     
     public function initRoutes($rc) {
@@ -31,48 +39,81 @@ class TransactionsAPI {
         if(!$auth)
             throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
         
+        $promise = [];
+        
         if(isset($query['asset']))
             $promise = $this -> amqp -> call(
                 'wallet.wallet',
-                'symbolToAssetId',
-                [
-                    'symbol' => $query['asset'],
-                    'allowDisabled' => false
-                ]
+                'getAsset',
+                [ 'symbol' => $query['asset'] ]
             );
         else
             $promise = Promise\resolve(null);
         
-        return $promise -> then(function($assetid) use($th, $query, $auth) {
-            if(isset($query['network']))
-                $netid = $th -> networks -> symbolToNetId($query['network'], false);
+        return $promise -> then(function($asset) use($th, $query, $auth) {
+            if(isset($query['network'])) {
+                $network = $th -> networks -> getNetwork([
+                    'symbol' => $query['network']
+                ]);
+            }
             else
-                $netid = null;
-                
-            $body = [
-                'uid' => $auth['uid'],
-                'assetid' => $assetid,
-                'type' => isset($query['type']) ? $query['type'] : null,
-                'limit' => isset($query['limit']) ? $query['limit'] : null,
-                'offset' => isset($query['offset']) ? $query['offset'] : null,
-                'netid' => $netid
-            ];
+                $network = null;
             
-            return $th -> transactions -> getTransactions($body) -> then(
-                function($resp) use($th) {
-                    $promises = [];
+            if(isset($query['status'])) {
+                $status = [];
+                
+                $expStatus = explode(',', $query['status']);
+                foreach($expStatus as $statusItem) {
+                    if(!in_array($statusItem, $th -> allowedStatus))
+                        throw new Error(
+                            'VALIDATION_ERROR',
+                            'Allowed statuses: '.implode(', '.$th -> allowedStatus),
+                            400
+                        );
                     
-                    foreach($resp['transactions'] as $privTx)
-                        $promises[] = $th -> privTxToPubTxRecord($privTx);
+                    $status[] = $statusItem;
+                }
+            }
+            else
+                $status = $th -> allowedStatus;
+                
+            $resp = $th -> transactions -> getTransactions([
+                'uid' => $auth['uid'],
+                'assetid' => @$asset['assetid'],
+                'netid' => @$network['netid'],
+                'type' => isset($query['type']) ? explode(',', $query['type']) : null,
+                'status' => $status,
+                'offset' => @$query['offset'],
+                'limit' => @$query['limit']
+            ]);
+            
+            $promises = [];
+            $mapAssets = [];
+            
+            foreach($resp['transactions'] as $record) {
+                $assetid = $record['assetid'];
+                
+                if(!array_key_exists($assetid, $mapAssets)) {
+                    $mapAssets[$assetid] = null;
                     
-                    return Promise\all($promises) -> then(
-                        function($pubTxs) use($resp) {
-                            return [
-                                'transactions' => $pubTxs,
-                                'more' => $resp['more']
-                            ];
+                    $promises[] = $th -> amqp -> call(
+                        'wallet.wallet',
+                        'getAsset',
+                        [ 'assetid' => $assetid ]
+                    ) -> then(
+                        function($asset) use(&$mapAssets, $assetid) {
+                            $mapAssets[$assetid] = $asset;
                         }
                     );
+                }
+            }
+            
+            return Promise\all($promises) -> then(
+                function() use(&$mapAssets, $resp, $th) {
+                    foreach($resp['transactions'] as $k => $v)
+                        $resp['transactions'][$k] = $th -> ptpTransaction($v, $mapAssets[ $v['assetid'] ]);
+                    
+                    return $resp;
                 }
             );
         });
@@ -82,35 +123,64 @@ class TransactionsAPI {
         if(!$auth)
             throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
         
-        return $th -> transactions -> getTransaction([
+        $transaction = $th -> transactions -> getTransaction([
             'xid' => $path['xid'],
             'uid' => $auth['uid']
-        ]) -> then(
-            function($tx) use($th) {
-                return $th -> privTxToPubTxRecord($tx);
+        ]);
+        
+        if(
+            $transaction['uid'] != $auth['uid'] ||
+            !in_array($transaction['status'], $this -> allowedStatus)
+        )
+            throw new Error('FORBIDDEN', 'No permissions to transaction '.$path['xid'], 403);
+        
+        return $this -> amqp -> call(
+            'wallet.wallet',
+            'getAsset',
+            [ 'assetid' => $transaction['assetid'] ]
+        ) -> then(
+            function($asset) use($th, $transaction) {
+                return $th -> ptpTransaction($transaction, $asset);
             }
         );
     }
     
-    private function privTxToPubTxRecord($priv) {
-        $th = $this;
+    private function ptpTransaction($record, $asset) {
+        if($record['netid']) {
+            $network = $this -> networks -> getNetwork([
+                'netid' => $record['netid']
+            ]);
+        }
+        else
+            $network = null;
         
-        return $this -> amqp -> call(
-            'wallet.wallet',
-            'assetIdToSymbol',
-            [ 'assetid' => $priv['assetid'] ]
-        ) -> then(function($assetSymbol) use($th, $priv) {
-            if($priv['netid'])
-                $netSymbol = $th -> networks -> netIdToSymbol($priv['netid']);
-            else
-                $netSymbol = null;
-            
-            return [
-                'xid' => $priv['xid'],
-                'asset' => $assetSymbol,
-                'network' => $netSymbol
-            ];
-        });
+        return [
+            'xid' => $record['xid'],
+            'type' => $record['type'],
+            'amount' => $record['amount'],
+            'status' => $record['status'],
+            'createTime' => $record['createTime'],
+            'address' => $record['address'],
+            'memo' => $record['memo'],
+            'execTime' => $record['execTime'],
+            'confirmations' => $record['confirmations'], // TODO
+            'confirmTarget' => $record['confirmTarget'], // TODO
+            'txid' => $record['txid'],
+            'height' => $record['height'],
+            'fee' => $record['wdFeeThis'],
+            'asset' => [
+                'symbol' => $asset['symbol'],
+                'name' => $asset['name'],
+                'iconUrl' => $asset['iconUrl']
+            ],
+            'network' => $network ? [
+                'symbol' => $network['symbol'],
+                'name' => $network['name'],
+                'iconUrl' => $network['iconUrl'],
+                'confirmTarget' => $network['confirmTarget'],
+                'memoName' => $network['memoName']
+            ] : null
+        ];
     }
 }
 

@@ -115,12 +115,12 @@ class App extends Infinex\App\App {
             $this -> withdrawals
         );
         
-        /*$this -> transactionsApi = new TransactionsAPI(
+        $this -> transactionsApi = new TransactionsAPI(
             $this -> log,
             $this -> amqp,
             $this -> transactions,
             $this -> networks
-        );*/
+        );
         
         $this -> rest = new Infinex\API\REST(
             $this -> log,
@@ -128,8 +128,8 @@ class App extends Infinex\App\App {
             [
                 $this -> networksApi,
                 $this -> depositApi,
-                $this -> withdrawalApi
-                /*$this -> transactionsApi*/
+                $this -> withdrawalApi,
+                $this -> transactionsApi
             ]
         );
     }
