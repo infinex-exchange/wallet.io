@@ -302,12 +302,12 @@ class Transactions {
             'confirmTarget' => $row['confirms_target'],
             'txid' => $row['txid'],
             'height' => $row['height'],
-            'wdFeeThis' => $row['wd_fee_this'],
-            'wdFeeNative' => $row['wd_fee_native'],
+            'wdFeeThis' => $row['wd_fee_this'] ? trimFloat($row['wd_fee_this']) : null,
+            'wdFeeNative' => $row['wd_fee_native'] ? trimFloat($row['wd_fee_native']) : null,
             'bridgeIssued' => $row['bridge_issued'],
             'silent' => !$row['send_mail'],
             'executorLock' => $row['executor_lock'],
-            'wdFeeBase' => $row['wd_fee_base']
+            'wdFeeBase' => $row['wd_fee_base'] ? trimFloat($row['wd_fee_base']) : null
         ];
     }
 }
