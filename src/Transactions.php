@@ -114,7 +114,7 @@ class Transactions {
         }
         if(isset($body['address']) && !is_string($body['address']))
             throw new Error('VALIDATION_ERROR', 'address', 400);
-        if(array_key_exists($body['memo']) && $body['memo'] !== null && !is_string($body['memo']))
+        if(array_key_exists('memo', $body) && $body['memo'] !== null && !is_string($body['memo']))
             throw new Error('VALIDATION_ERROR', 'memo', 400);
             
         $pag = new Pagination\Offset(50, 500, $body);
@@ -189,7 +189,7 @@ class Transactions {
             $sql .= ' AND address = :address';
         }
         
-        if(array_key_exists($body['memo'])) {
+        if(array_key_exists('memo', $body)) {
             $task[':memo'] = $body['memo'];
             $sql .= ' AND memo IS NOT DISTINCT FROM :memo';
         }
