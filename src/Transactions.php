@@ -84,7 +84,7 @@ class Transactions {
     public function getTransactions($body) {
         if(isset($body['uid']) && !validateId($body['uid']))
             throw new Error('VALIDATION_ERROR', 'uid');
-        if(isset($body['type']) {
+        if(isset($body['type'])) {
             if(!is_array($body['type']))
                 $body['type'] = [ $body['type'] ];
             
