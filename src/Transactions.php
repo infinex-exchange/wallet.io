@@ -100,7 +100,7 @@ class Transactions {
             throw new Error('VALIDATION_ERROR', 'assetid');
         if(isset($body['netid']) && !is_string($body['netid']))
             throw new Error('VALIDATION_ERROR', 'netid');
-        if(isset($body['status']) {
+        if(isset($body['status'])) {
             if(!is_array($body['status']))
                 $body['status'] = [ $body['status'] ];
             
