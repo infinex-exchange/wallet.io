@@ -153,7 +153,7 @@ class Transactions {
         if(!empty($body['type'])) {
             $sql .= ' AND type IN(';
             
-            foreach($i = 0; $i < count($body['type']); $i++) {
+            for($i = 0; $i < count($body['type']); $i++) {
                 if($i > 0) $sql .= ',';
                 $task[':type'.$i] = $body['type'][$i];
                 $sql .= ':type'.$i;
