@@ -148,6 +148,7 @@ class App extends Infinex\App\App {
                     $th -> shards -> start(),
                     $th -> nodes -> start(),
                     $th -> depositAddr -> start(),
+                    $th -> transactions -> start(),
                     $th -> deposits -> start()
                 ]);
             }
@@ -180,6 +181,7 @@ class App extends Infinex\App\App {
                     $th -> shards -> stop(),
                     $th -> nodes -> stop(),
                     $th -> depositAddr -> stop(),
+                    $th -> transactions -> stop(),
                     $th -> deposits -> start()
                 ]);
             }
