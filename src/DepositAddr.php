@@ -138,7 +138,7 @@ class DepositAddr {
     
     public function getDepositAddress($body) {
         if(isset($body['addrid']) && isset($body['address']))
-            throw new Error('ARGUMENTS_CONFLICT', 'addrid and address cannot be used together')
+            throw new Error('ARGUMENTS_CONFLICT', 'addrid and address cannot be used together');
         else if(isset($body['addrid'])) {
             if(!validateId($body['addrid']))
                 throw new Error('VALIDATION_ERROR', 'addrid');
