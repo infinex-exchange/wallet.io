@@ -56,6 +56,8 @@ class DepositAPI {
                 'assetid' => $asset['assetid']
             ]);
             
+            var_dump($an);
+            
             // Network checks
             if(!$an['network']['enabled'])
                 throw new Error('FORBIDDEN', 'Network '.$path['network'].' is out of service', 403);
