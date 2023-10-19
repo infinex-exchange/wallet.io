@@ -96,16 +96,17 @@ class App extends Infinex\App\App {
             $this -> deposits
         );
         
-        /*$this -> depositApi = new DepositAPI(
+        $this -> depositApi = new DepositAPI(
             $this -> log,
             $this -> amqp,
             $this -> pdo,
             $this -> networks,
             $this -> shards,
-            $this -> depositAddr
+            $this -> depositAddr,
+            $this -> deposits
         );
         
-        $this -> withdrawalApi = new WithdrawalAPI(
+        /*$this -> withdrawalApi = new WithdrawalAPI(
             $this -> log,
             $this -> amqp,
             $this -> pdo,
@@ -126,8 +127,8 @@ class App extends Infinex\App\App {
             $this -> amqp,
             [
                 $this -> networksApi,
-                /*$this -> depositApi,
-                $this -> withdrawalApi,
+                $this -> depositApi,
+                /*$this -> withdrawalApi,
                 $this -> transactionsApi*/
             ]
         );
