@@ -163,12 +163,13 @@ class TransactionsAPI {
             'createTime' => $record['createTime'],
             'address' => $record['address'],
             'memo' => $record['memo'],
-            'execTime' => $record['execTime'],
+            'confirmTime' => $record['confirmTime'],
             'confirmations' => $record['confirmations'], // TODO
             'confirmTarget' => $record['confirmTarget'],
             'txid' => $record['txid'],
             'height' => $record['height'],
             'fee' => $record['wdFeeThis'],
+            'delayed' => null, // TODO
             'asset' => [
                 'symbol' => $asset['symbol'],
                 'name' => $asset['name'],

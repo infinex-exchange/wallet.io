@@ -298,7 +298,7 @@ class Transactions {
             'createTime' => intval($row['create_time']),
             'address' => $row['address'],
             'memo' => $row['memo'],
-            'execTime' => $row['exec_time'] ? intval($row['exec_time']) : null,
+            'confirmTime' => $row['exec_time'] ? intval($row['exec_time']) : null,
             'confirmations' => $row['confirms'],
             'confirmTarget' => $row['confirms_target'],
             'txid' => $row['txid'],
