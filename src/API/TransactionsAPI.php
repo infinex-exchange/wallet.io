@@ -165,7 +165,7 @@ class TransactionsAPI {
             'memo' => $record['memo'],
             'execTime' => $record['execTime'],
             'confirmations' => $record['confirmations'], // TODO
-            'confirmTarget' => $record['confirmTarget'], // TODO
+            'confirmTarget' => $record['confirmTarget'],
             'txid' => $record['txid'],
             'height' => $record['height'],
             'fee' => $record['wdFeeThis'],
@@ -178,7 +178,6 @@ class TransactionsAPI {
                 'symbol' => $network['symbol'],
                 'name' => $network['name'],
                 'iconUrl' => $network['iconUrl'],
-                'confirmTarget' => $network['confirmTarget'],
                 'memoName' => $network['memoName']
             ] : null
         ];
