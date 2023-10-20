@@ -20,6 +20,7 @@ class Transactions {
     private $allowedStatus = [
         'PENDING',
         'PROCESSING',
+        'CONFIRM_PENDING',
         'DONE',
         'CANCEL_PENDING',
         'CANCELED',
