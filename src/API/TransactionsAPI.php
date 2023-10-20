@@ -173,7 +173,8 @@ class TransactionsAPI {
             'asset' => [
                 'symbol' => $asset['symbol'],
                 'name' => $asset['name'],
-                'iconUrl' => $asset['iconUrl']
+                'iconUrl' => $asset['iconUrl'],
+                'defaultPrec' => $asset['defaultPrec']
             ],
             'network' => $network ? [
                 'symbol' => $network['symbol'],
