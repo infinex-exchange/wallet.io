@@ -142,6 +142,8 @@ class Networks {
                 throw new Error('VALIDATION_ERROR', 'symbol', 400);
             $dispNet = $body['symbol'];
         }
+        else
+            throw new Error('MISSING_DATA', 'netid or symbol', 400);
         
         $task = [];
         
