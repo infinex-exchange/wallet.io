@@ -221,7 +221,7 @@ class Transactions {
             throw new Error('ARGUMENTS_CONFLICT', 'xid and txid cannot be used together');
         else if(isset($body['xid'])) {
             if(!validateId($body['xid']))
-                throw new Error('VALIDATION_ERROR', 'xid');
+                throw new Error('VALIDATION_ERROR', 'xid', 400);
             
             $dispTx = $body['xid'];
         }
@@ -232,7 +232,7 @@ class Transactions {
             if(!is_string($body['netid']))
                 throw new Error('VALIDATION_ERROR', 'netid');
             if(!is_string($body['txid']))
-                throw new Error('VALIDATION_ERROR', 'txid');
+                throw new Error('VALIDATION_ERROR', 'txid', 400);
             
             $dispTx = $body['netid'].':'.$body['txid'];
         }
