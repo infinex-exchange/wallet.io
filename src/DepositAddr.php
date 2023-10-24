@@ -210,8 +210,7 @@ class DepositAddr {
         if(!is_string($body['netid']))
             throw new Error('VALIDATION_ERROR', 'netid');
         
-        $this -> pdo -> beginTransaction();
-        
+        // Non blocking get, most often calls this is enough
         $task = [
             ':uid' => $body['uid'],
             ':netid' => $body['netid']
@@ -225,42 +224,56 @@ class DepositAddr {
                        uid
                 FROM deposit_addr
                 WHERE uid = :uid
-                AND netid = :netid
-                FOR UPDATE';
+                AND netid = :netid';
         
         $q = $this -> pdo -> prepare($sql);
         $q -> execute($task);
         $row = $q -> fetch();
         
-        if(!$row) {  
-            $sql = 'UPDATE deposit_addr
-                    SET uid = :uid
-                    WHERE addrid IN (
-                        SELECT addrid
-                        FROM deposit_addr
-                        WHERE netid = :netid
-                        AND uid IS NULL
-                        LIMIT 1
-                    )
-                    RETURNING addrid,
-                              netid,
-                              shardno,
-                              address,
-                              memo,
-                              uid';
-            
-            $q = $this -> pdo -> prepare($sql);
-            $q -> execute($task);
-            $row = $q -> fetch();
-            
-            if(!$row) {
-                $this -> pdo -> rollBack();
-                throw new Error('ASSIGN_ADDR_FAILED', 'Unable to assign new deposit address. Please try again later.', 500);
-            }
+        if($row)
+            return $this -> rtrAddress($row);
+        
+        // Exclusive lock
+        $this -> pdo -> beginTransaction();
+        $this -> pdo -> query('LOCK TABLE deposit_addr');
+        
+        // Get again, race condition safe
+        $q = $this -> pdo -> prepare($sql);
+        $q -> execute($task);
+        $row = $q -> fetch();
+        
+        if($row) {
+            $this -> pdo -> rollBack();
+            return $this -> rtrAddress($row);
+        }
+        
+        $sql = 'UPDATE deposit_addr
+                SET uid = :uid
+                WHERE addrid IN (
+                    SELECT addrid
+                    FROM deposit_addr
+                    WHERE netid = :netid
+                    AND uid IS NULL
+                    LIMIT 1
+                )
+                RETURNING addrid,
+                          netid,
+                          shardno,
+                          address,
+                          memo,
+                          uid';
+        
+        $q = $this -> pdo -> prepare($sql);
+        $q -> execute($task);
+        $row = $q -> fetch();
+        
+        if(!$row) {
+            $this -> pdo -> rollBack();
+            throw new Error('ASSIGN_ADDR_FAILED', 'Unable to assign new deposit address. Please try again later.', 500);
         }
         
         $this -> pdo -> commit();
-                
+            
         return $this -> rtrAddress($row);
     }
     
