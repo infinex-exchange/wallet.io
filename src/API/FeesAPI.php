@@ -22,7 +22,7 @@ class FeesAPI {
     
     public function initRoutes($rc) {
         $rc -> get('/fees', [$this, 'getAllFees']);
-        $rc -> get('/fees/{asset}', [$this, 'getFee']);
+        $rc -> get('/fees/{asset}', [$this, 'getFees']);
     }
     
     public function getAllFees($path, $query, $body, $auth) {
