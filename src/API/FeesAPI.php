@@ -65,7 +65,7 @@ class FeesAPI {
     }
     
     private function getFeesForAsset($asset) {
-        $an = $th -> networks -> getAnPairs([
+        $an = $this -> networks -> getAnPairs([
             'assetid' => $asset['assetid'],
             'enabled' => true,
             'enabledNetwork' => true
@@ -73,9 +73,9 @@ class FeesAPI {
         
         $networks = [];
         foreach($an['an'] as $an) {
-            $wdMinAmount = $th -> withdrawals -> resolveMinWithdrawalAmount($asset, $an);
-            $depoMinAmount = $th -> deposits -> resolveMinDepositAmount($asset, $an);
-            $feeRange = $th -> withdrawals -> resolveFeeRange($an);
+            $wdMinAmount = $this -> withdrawals -> resolveMinWithdrawalAmount($asset, $an);
+            $depoMinAmount = $this -> deposits -> resolveMinDepositAmount($asset, $an);
+            $feeRange = $this -> withdrawals -> resolveFeeRange($an);
             
             $networks[] = [
                 'symbol' => $an['network']['symbol'],
