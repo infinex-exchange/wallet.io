@@ -66,7 +66,7 @@ class FeesAPI {
     
     private function getFeesForAsset($asset) {
         $an = $th -> networks -> getAnPairs([
-            'assetid' => $asset['assetid']
+            'assetid' => $asset['assetid'],
             'enabled' => true,
             'enabledNetwork' => true
         ]);
