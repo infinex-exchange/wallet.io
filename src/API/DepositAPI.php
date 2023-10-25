@@ -89,7 +89,7 @@ class DepositAPI {
                 'memo' => $address['memo'],
                 'confirmTarget' => $an['network']['confirmTarget'],
                 'contract' => $an['contract'],
-                'minAmount' => $minAmount,
+                'minAmount' => trimFloat($minAmount -> toFixed($asset['defaultPrec'])),
                 'operating' => $shard['operating'],
                 'qrCode' => null,
                 'warnings' => []

@@ -63,7 +63,7 @@ class Deposits {
         if($minAn > $min)
             $min = $minAn;
         
-        return trimFloat($min -> toFixed($asset['defaultPrec']));
+        return $min;
     }
 }
 
