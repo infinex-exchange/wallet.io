@@ -81,10 +81,10 @@ class FeesAPI {
                 'symbol' => $an['network']['symbol'],
                 'name' => $an['network']['name'],
                 'iconUrl' => $an['network']['iconUrl'],
-                'deposits' => [
+                'deposit' => [
                     'minAmount' => trimFloat($depoMinAmount -> toFixed($asset['defaultPrec']))
                 ],
-                'withdrawals' => [
+                'withdrawal' => [
                     'minAmount' => trimFloat($wdMinAmount -> toFixed($asset['defaultPrec'])),
                     'feeMin' => trimFloat($feeRange['min'] -> toFixed($an['prec'])),
                     'feeMax' => trimFloat($feeRange['max'] -> toFixed($an['prec']))
