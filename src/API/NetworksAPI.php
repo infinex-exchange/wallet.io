@@ -78,7 +78,7 @@ class NetworksAPI {
     private function ptpNetwork($record) {
         return [
             'symbol' => $record['symbol'],
-            'name' => $record['symbol'],
+            'name' => $record['name'],
             'iconUrl' => $record['iconUrl']
         ];
     }
