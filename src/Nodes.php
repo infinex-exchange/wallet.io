@@ -168,7 +168,7 @@ class Nodes {
         
         return [
             'lastPing' => intval($row['last_ping']),
-            'operating' => time() - intval($row['last_ping']) <= $this -> operatingTimeout
+            'operating' => true // TODO: time() - intval($row['last_ping']) <= $this -> operatingTimeout
         ];
     }
     
@@ -178,7 +178,7 @@ class Nodes {
             'netid' => $row['netid'],
             'shardno' => $row['shardno'],
             'lastPing' => intval($row['last_ping']),
-            'operating' => time() - intval($row['last_ping']) <= $this -> operatingTimeout
+            'operating' => true // TODO: time() - intval($row['last_ping']) <= $this -> operatingTimeout
         ];
     }
 }
