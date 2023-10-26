@@ -142,6 +142,7 @@ class Withdrawals {
                 ]
             ) -> then(
                 function($respLegacy) use($resp) {
+                    var_dump($respLegacy);
                     if($respLegacy['status'] != 200 || @$respLegacy['body']['success'] != true)
                         throw new Error('UNKNOWN', 'Legacy API error', 500);
                     $resp['validMemo'] = @$respLegacy['body']['valid_memo'];
