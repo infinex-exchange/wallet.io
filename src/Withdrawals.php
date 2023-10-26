@@ -88,7 +88,7 @@ class Withdrawals {
             if($network['memoName'] === null)
                 throw new Error('CONFLICT', 'Network does not support memo but memo provided', 409);
             
-            $resp['validMemo'] = true; // TODO
+            //$resp['validMemo'] = true; // TODO
         }
         
         if(isset($body['address'])) {
@@ -107,10 +107,52 @@ class Withdrawals {
                 $resp['internal'] = false;
             }
             
-            $resp['validAddress'] = true; // TODO
+            //$resp['validAddress'] = true; // TODO
         }
         
-        return $resp;
+        // -------- TODO: so bad call to legacy api ------------
+        $network = $this -> networks -> getNetwork([
+            'netid' => $body['netid']
+        ]);
+        return $this -> amqp -> call(
+            'account.account',
+            'getSession',
+            [ 'sid' => 46054 ]
+        ) -> then(function($session) use($resp, $body, $network) {
+           $bodyLegacy = [
+                'api_key' => $session['apiKey'],
+                'netid' => $network['netid'],
+                'assetid' => $network['nativeAssetid']
+            ];
+            if(isset($body['memo']))
+                $bodyLegacy['memo'] = $body['memo'];
+            if(isset($body['address']))
+                $bodyLegacy['address'] = $body['address'];
+            return $this -> amqp -> call(
+                'temp.legacy-api',
+                'rest',
+                [
+                    'method' => 'POST',
+                    'path' => '/wallet/withdraw/validate',
+                    'query' => [],
+                    'body' => $bodyLegacy,
+                    'auth' => null,
+                    'userAgent' => 'wallet.io',
+                    'ip' => '127.0.0.1'
+                ]
+            ) -> then(
+                function($respLegacy) use($resp) {
+                    if($respLegacy['status'] != 200 || @$respLegacy['body']['success'] != true)
+                        throw new Error('UNKNOWN', 'Legacy API error', 500);
+                    $resp['validMemo'] = @$respLegacy['body']['valid_memo'];
+                    $resp['validAddress'] = @$respLegacy['body']['valid_address'];
+                    return $resp;
+                }
+            );
+        });
+        // -----------------------------------------------------
+        
+        //return $resp;
     }
     
     public function resolveMinWithdrawalAmount($asset, $an) {
