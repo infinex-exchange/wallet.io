@@ -121,8 +121,8 @@ class Withdrawals {
         ) -> then(function($session) use($resp, $body, $network) {
            $bodyLegacy = [
                 'api_key' => $session['apiKey'],
-                'netid' => $network['netid'],
-                'assetid' => $network['nativeAssetid']
+                'network' => $network['netid'],
+                'asset' => $network['nativeAssetid']
             ];
             if(isset($body['memo']))
                 $bodyLegacy['memo'] = $body['memo'];
