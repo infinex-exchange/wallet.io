@@ -258,15 +258,15 @@ class Transfers {
             if(!$asset['enabled'])
                 throw new Error('FORBIDDEN', 'Transfer asset is out of service', 403);
             
-            echo "\n\n".$body['amount']."\n\n";
             $dAmount = new Decimal($body['amount']);
             if(! @$body['ignorePrec'])
                 $dAmount = $dAmount -> round($asset['defaultPrec'], Decimal::ROUND_TRUNCATE);
             if($dAmount <= 0)
                 throw new Error('AMOUNT_OUT_OF_RANGE', 'Transfer amount is less than minimal amount', 416);
             
+            echo $dAmount -> toFixed($asset['defaultPrec'])."\n\n";
+            
             $strAmount = trimFloat($dAmount -> toFixed($asset['defaultPrec']));
-            echo "\n\n".$strAmount."\n\n";
             
             return $this -> amqp -> call(
                 'wallet.wallet',
