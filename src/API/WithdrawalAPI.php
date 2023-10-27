@@ -19,8 +19,8 @@ class WithdrawalAPI {
     }
     
     public function initRoutes($rc) {
-        $rc -> get('/withdrawal/{network}/{asset}', [$this, 'preflight']);
-        $rc -> post('/withdrawal/{network}', [$this, 'validate']);
+        $rc -> get('/withdrawal/{network}/info/{asset}', [$this, 'preflight']);
+        $rc -> get('/withdrawal/{network}/validation', [$this, 'validate']);
     }
     
     public function preflight($path, $query, $body, $auth) {
@@ -95,8 +95,8 @@ class WithdrawalAPI {
             
         return $this -> withdrawals -> validateWithdrawalTarget([
             'netid' => $network['netid'],
-            'address' => @$body['address'],
-            'memo' => @$body['memo']
+            'address' => @$query['address'],
+            'memo' => @$query['memo']
         ]);
     }
 }
