@@ -230,7 +230,7 @@ class Transfers {
                 'account.account',
                 'getUser',
                 [
-                    'uid' => @$body['dstUid']
+                    'uid' => @$body['dstUid'],
                     'email' => @$body['dstEmail']
                 ]
             ),
