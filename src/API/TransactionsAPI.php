@@ -123,6 +123,8 @@ class TransactionsAPI {
     }
     
     public function getTransaction($path, $query, $body, $auth) {
+        $th = $this;
+        
         if(!$auth)
             throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
         
