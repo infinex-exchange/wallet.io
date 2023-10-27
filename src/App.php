@@ -7,6 +7,7 @@ require __DIR__.'/DepositAddr.php';
 require __DIR__.'/Withdrawals.php';
 require __DIR__.'/Transactions.php';
 require __DIR__.'/Deposits.php';
+require __DIR__.'/Transfers.php';
 
 require __DIR__.'/API/NetworksAPI.php';
 require __DIR__.'/API/DepositAPI.php';
@@ -26,6 +27,7 @@ class App extends Infinex\App\App {
     private $withdrawals;
     private $transactions;
     private $deposits;
+    private $transfers;
     
     private $networksApi;
     private $depositApi;
@@ -93,6 +95,12 @@ class App extends Infinex\App\App {
             $this -> pdo
         );
         
+        $this -> transfers = new Transfers(
+            $this -> log,
+            $this -> amqp,
+            $this -> pdo
+        );
+        
         $this -> networksApi = new NetworksAPI(
             $this -> log,
             $this -> amqp,
@@ -121,7 +129,8 @@ class App extends Infinex\App\App {
             $this -> log,
             $this -> amqp,
             $this -> transactions,
-            $this -> networks
+            $this -> networks,
+            $this -> transfers
         );
         
         $this -> feesApi = new FeesAPI(
@@ -160,7 +169,8 @@ class App extends Infinex\App\App {
                     $th -> nodes -> start(),
                     $th -> depositAddr -> start(),
                     $th -> transactions -> start(),
-                    $th -> deposits -> start()
+                    $th -> deposits -> start(),
+                    $th -> transfers -> start()
                 ]);
             }
         ) -> then(
@@ -193,7 +203,8 @@ class App extends Infinex\App\App {
                     $th -> nodes -> stop(),
                     $th -> depositAddr -> stop(),
                     $th -> transactions -> stop(),
-                    $th -> deposits -> start()
+                    $th -> deposits -> stop(),
+                    $th -> transfers -> stop()
                 ]);
             }
         ) -> then(
