@@ -9,6 +9,7 @@ class TransactionsAPI {
     private $transactions;
     private $networks;
     private $transfers;
+    private $withdrawals;
     
     private $allowedStatus = [
         'PENDING',
@@ -19,12 +20,13 @@ class TransactionsAPI {
         'CANCELED'
     ];
     
-    function __construct($log, $amqp, $transactions, $networks, $transfers) {
+    function __construct($log, $amqp, $transactions, $networks, $transfers, $withdrawals) {
         $this -> log = $log;
         $this -> amqp = $amqp;
         $this -> transactions = $transactions;
         $this -> networks = $networks;
         $this -> transfers = $transfers;
+        $this -> withdrawals = $withdrawals;
         
         $this -> log -> debug('Initialized transactions API');
     }
@@ -165,11 +167,78 @@ class TransactionsAPI {
                 'dstEmail' => @$body['address'],
                 'memo' => @$body['memo'],
                 'symbol' => @$body['asset'],
-                'amount' => @$body['amount']
-            ]) -> then(function($resp) use($th, $auth) {
-                return $th -> getTransaction(['xid' => $resp['xid']], [], [], $auth);
+                'amount' => @$body['amount'],
+                'validateOnly' => true
+            ]) -> then(function() use($th, $body, $auth) {
+                return $th -> amqp -> call(
+                    'account.mfa',
+                    'mfa',
+                    [
+                        'uid' => $auth['uid'],
+                        'case' => 'WITHDRAWAL',
+                        'action' => 'transfer',
+                        'context' => [
+                            'asset' => $body['asset'],
+                            'amount' => $body['amount'],
+                            'address' => $body['address']
+                        ],
+                        'code' => @$body['code2FA']
+                    ]
+                ) -> then(function() use($th, $body, $auth) {
+                    return $this -> transfers -> createTransfer([
+                        'srcUid' => $auth['uid'],
+                        'dstEmail' => $body['address'],
+                        'memo' => @$body['memo'],
+                        'symbol' => $body['asset'],
+                        'amount' => $body['amount']
+                    ]) -> then(function($resp) use($th, $auth) {
+                        return $th -> getTransaction(['xid' => $resp['xid']], [], [], $auth);
+                    });
+                });
             });
         }
+        
+        
+        else {
+            return $this -> withdrawals -> createWithdrawal([
+                'uid' => $auth['uid'],
+                'assetSymbol' => @$body['asset'],
+                'networkSymbol' => @$body['network'],
+                'address' => @$body['address'],
+                'memo' => @$body['memo'],
+                'amount' => @$body['amount'],
+                'validateOnly' => true
+            ]) -> then(function() use($th, $body, $auth) {
+                return $th -> amqp -> call(
+                    'account.mfa',
+                    'mfa',
+                    [
+                        'uid' => $auth['uid'],
+                        'case' => 'WITHDRAWAL',
+                        'action' => 'withdraw',
+                        'context' => [
+                            'asset' => $body['asset'],
+                            'amount' => $body['amount'],
+                            'address' => $body['address']
+                        ],
+                        'code' => @$body['code2FA']
+                    ]
+                ) -> then(function() use($th, $body, $auth) {
+                    return $this -> withdrawals -> createWithdrawal([
+                        'uid' => $auth['uid'],
+                        'assetSymbol' => $body['asset'],
+                        'networkSymbol' => $body['network'],
+                        'address' => $body['address'],
+                        'memo' => @$body['memo'],
+                        'amount' => $body['amount']
+                    ]) -> then(function($resp) use($th, $auth) {
+                        return $th -> getTransaction(['xid' => $resp['xid']], [], [], $auth);
+                    });
+                });
+            });
+        }
+         
+         
     }
     
     private function ptpTransaction($record, $asset) {

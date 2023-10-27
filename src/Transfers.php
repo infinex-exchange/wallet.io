@@ -224,6 +224,8 @@ class Transfers {
             throw new Error('VALIDATION_ERROR', 'memo', 400);
         if(isset($body['ignorePrec']) && !is_bool($body['ignorePrec']))
             throw new Error('VALIDATION_ERROR', 'ignorePrec');
+        if(isset($body['validateOnly'] && !is_bool($body['validateOnly']))
+            throw new Error('VALIDATION_ERROR', 'validateOnly');
         
         return Promise\all([
             $this -> amqp -> call(
@@ -263,6 +265,9 @@ class Transfers {
                 $dAmount = $dAmount -> round($asset['defaultPrec'], Decimal::ROUND_TRUNCATE);
             if($dAmount <= 0)
                 throw new Error('AMOUNT_OUT_OF_RANGE', 'Transfer amount is less than minimal amount', 416);
+            
+            if(@ $body['validateOnly'])
+                return;
             
             $strAmount = trimFloat($dAmount -> toFixed($asset['defaultPrec']));
             

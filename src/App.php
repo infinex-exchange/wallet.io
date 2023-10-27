@@ -130,7 +130,8 @@ class App extends Infinex\App\App {
             $this -> amqp,
             $this -> transactions,
             $this -> networks,
-            $this -> transfers
+            $this -> transfers,
+            $this -> withdrawals
         );
         
         $this -> feesApi = new FeesAPI(
