@@ -264,8 +264,6 @@ class Transfers {
             if($dAmount <= 0)
                 throw new Error('AMOUNT_OUT_OF_RANGE', 'Transfer amount is less than minimal amount', 416);
             
-            echo $dAmount -> toFixed($asset['defaultPrec'])."\n\n";
-            
             $strAmount = trimFloat($dAmount -> toFixed($asset['defaultPrec']));
             
             return $this -> amqp -> call(
