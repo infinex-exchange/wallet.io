@@ -197,7 +197,7 @@ class Transfers {
             $th -> amqp -> pub(
                 'mail',
                 [
-                    'uid' => $body['dstUid'],
+                    'uid' => $body['dstUser']['uid'],
                     'template' => 'transfer_in',
                     'context' => [
                         'asset' => $body['asset']['symbol'],
