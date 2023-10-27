@@ -126,7 +126,7 @@ class TransactionsAPI {
         if(!$auth)
             throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
         
-        $transaction = $th -> transactions -> getTransaction([
+        $transaction = $this -> transactions -> getTransaction([
             'xid' => $path['xid'],
             'uid' => $auth['uid']
         ]);
