@@ -119,7 +119,7 @@ class Transfers {
                 )
                 RETURNING xid';
         
-        $q = $th -> pdo -> prepare($sql);
+        $q = $this -> pdo -> prepare($sql);
         $q -> execute($task);
         $opposite = $q -> fetch();
         
@@ -134,7 +134,7 @@ class Transfers {
                     exec_time = NOW()
                 WHERE xid = :xid";
         
-        $q = $th -> pdo -> prepare($sql);
+        $q = $this -> pdo -> prepare($sql);
         $q -> execute($task);
         
         $this -> pdo -> commit();
