@@ -32,8 +32,13 @@ class Transfers {
         );
         
         $promises[] = $this -> amqp -> method(
-            'createTransfer',
-            [$this, 'createTransfer']
+            'executeTransfer',
+            [$this, 'executeTransfer_saga0']
+        );
+        
+        $promises[] = $this -> amqp -> method(
+            'executeTransfer_saga1',
+            [$this, 'executeTransfer_saga1']
         );
         
         return Promise\all($promises) -> then(
@@ -66,60 +71,19 @@ class Transfers {
         );
     }
     
-    public function pendingInternalTransfer($body) {
-        $th = $this;
-        
-        if(!isset($body['xid']) || !validateId($body['xid'])) {
-            $this -> log -> error('Ignoring pending transfer with invalid xid');
-            return;
-        }
-        
-        if(!isset($body['amount']) || !validateFloat($body['amount'])) {
-            $this -> log -> error('Ignoring pending transfer with invalid amount '.$body['xid']);
-            return;
-        }
-        
-        if(!isset($body['assetid']) || !is_string($body['assetid'])) {
-            $this -> log -> error('Ignoring pending transfer with invalid assetid '.$body['xid']);
-            return;
-        }
-        
-        if(!isset($body['srcUid']) || !validateId($body['srcUid'])) {
-            $this -> log -> error('Ignoring pending transfer with invalid srcUid '.$body['xid']);
-            return;
-        }
-        
-        if(!isset($body['srcEmail']) || !validateEmail($body['srcEmail'])) {
-            $this -> log -> error('Ignoring pending transfer with invalid srcEmail '.$body['xid']);
-            return;
-        }
-        
-        if(!isset($body['dstUid']) || !validateId($body['dstUid'])) {
-            $this -> log -> error('Ignoring pending transfer with invalid dstUid '.$body['xid']);
-            return;
-        }
-        
-        if(isset($body['memo']) && !$this -> validateTransferMessage($body['memo'])) {
-            $this -> log -> error('Ignoring pending transfer with invalid memo '.$body['xid']);
-            return;
-        }
-        
-        if(!isset($body['lockid']) || !validateId($body['lockid'])) {
-            $this -> log -> error('Ignoring pending transfer with invalid lockid '.$body['xid']);
-            return;
-        }
-        
+    public function executeTransfer_saga0($body) {
         $this -> pdo -> beginTransaction();
         
         $task = [
-            ':uid' => $body['dstUid'],
+            ':uid' => $body['dstUser']['uid'],
             ':type' => 'TRANSFER_IN',
-            ':assetid' => $body['assetid'],
+            ':assetid' => $body['asset']['assetid'],
             ':amount' => $body['amount'],
             ':status' => 'DONE',
-            ':address' => $body['srcEmail'],
+            ':address' => $body['srcUser']['email'],
             ':memo' => @$body['memo'],
-            ':opposite_xid' => $body['xid']
+            ':opposite_xid' => $body['xid'],
+            ':create_time' => $body['createTime']
         ];
         
         $sql = 'INSERT INTO wallet_transactions(
@@ -130,7 +94,9 @@ class Transfers {
                     status,
                     address,
                     memo,
-                    opposite_xid
+                    opposite_xid,
+                    create_time,
+                    exec_time
                 ) VALUES (
                     :uid,
                     :type,
@@ -139,77 +105,102 @@ class Transfers {
                     :status,
                     :address,
                     :memo,
-                    :opposite_xid
+                    :opposite_xid,
+                    TO_TIMESTAMP(:create_time),
+                    NOW()
                 )
                 RETURNING xid';
         
         $q = $th -> pdo -> prepare($sql);
         $q -> execute($task);
-        $insertTransferIn = $q -> fetch();
+        $opposite = $q -> fetch();
         
         $task = [
             ':xid' => $body['xid'],
-            ':opposite_xid' => $insertTransferIn['xid']
+            ':opposite_xid' => $opposite['xid']
         ];
         
         $sql = "UPDATE wallet_transactions
                 SET status = 'DONE',
-                    opposite_xid = :opposite_xid
-                WHERE xid = :xid
-                AND status = 'PENDING'
-                RETURNING 1";
+                    opposite_xid = :opposite_xid,
+                    exec_time = NOW()
+                WHERE xid = :xid";
         
         $q = $th -> pdo -> prepare($sql);
         $q -> execute($task);
-        $row = $q -> fetch();
-        
-        if(!$row) {
-            $this -> pdo -> rollBack();
-            $this -> log -> error(
-                'Data integrity error in pending internal transfer queue! '.
-                'Transaction '.$body['xid'].' not found or has unexpected status'
-            );
-            return;
-        }
         
         $this -> pdo -> commit();
+        
+        $body['oppositeXid'] = $opposite['xid'];
+        $th -> amqp -> pub(
+            'executeTransfer_saga1',
+            $body
+        );
+    }
+    
+    public function executeTransfer_saga1($body) {
+        $th = $this;
         
         return $this -> amqp -> call(
             'wallet.wallet',
             'credit',
             [
-                'uid' => $body['dstUid'],
-                'assetid' => $body['assetid'],
+                'uid' => $body['dstUser']['uid'],
+                'assetid' => $body['asset']['assetid'],
                 'amount' => $body['amount'],
                 'reason' => 'TRANSFER_RECEIVED',
-                'context' => $insertTransferIn['xid']
+                'context' => $body['oppositeXid']
             ]
-        ) -> then(
-            function() use($th, $body) {
-                return $th -> amqp -> call(
-                    'wallet.wallet',
-                    'commit',
-                    [
-                        'lockid' => $body['lockid'],
-                        'reason' => 'TRANSFER_DONE',
-                        'context' => $body['xid']
-                    ]
-                ) -> catch(function(Error $e) {
-                    $th -> log -> error(
-                        'Data integrity error in pending internal transfer queue! '.
-                        'Cannot commit lock '.$body['lockid'].' for transaction '.$body['xid'].': '.
-                        ((string) $e)
-                    );
-                });
-            },
-            function(Error $e) use($th, $body) {
-                $th -> log -> error(
-                    'Data integrity error in pending internal transfer queue! '.
-                    'Created opposite transaction and updated transaction '.$body['xid'].
-                    ' but call to wallet.wallet -> credit() failed: '.((string) $e)
-                );
-            }
-        );
+        ) -> then(function() use($th, $body) {
+            $th -> amqp -> pub(
+                'executeTransfer_saga2',
+                $body
+            );
+        });
+    }
+    
+    public function executeTransfer_saga2($body) {
+        $th = $this;
+        
+        return $th -> amqp -> call(
+            'wallet.wallet',
+            'commit',
+            [
+                'lockid' => $body['lockid'],
+                'reason' => 'TRANSFER_DONE',
+                'context' => $body['xid']
+            ]
+        ) -> then(function() use($th, $body) {
+            $th -> amqp -> pub(
+                'mail',
+                [
+                    'uid' => $body['srcUser']['uid'],
+                    'template' => 'transfer_out',
+                    'context' => [
+                        'asset' => $body['asset']['symbol'],
+                        'amount' => $body['amount'],
+                        'address' => $body['dstUser']['email'],
+                        'memo' => $body['memo'] ? $body['memo'] : '-'
+                    ],
+                    'email' => $body['srcUser']['email']
+                ]
+            );
+            
+            $th -> amqp -> pub(
+                'mail',
+                [
+                    'uid' => $body['dstUid'],
+                    'template' => 'transfer_in',
+                    'context' => [
+                        'asset' => $body['asset']['symbol'],
+                        'amount' => $body['amount'],
+                        'address' => $body['srcUser']['email'],
+                        'memo' => $body['memo'] ? $body['memo'] : '-'
+                    ],
+                    'email' => $body['dstUser']['email']
+                ]
+            );
+        });
     }
     
     public function createTransfer($body) {
@@ -310,23 +301,24 @@ class Transfers {
                             :wd_fee_this,
                             :lockid
                         )
-                        RETURNING xid';
+                        RETURNING xid,
+                                  EXTRACT(epoch FROM create_time) AS create_time';
                 
                 $q = $th -> pdo -> prepare($sql);
                 $q -> execute($task);
                 $row = $q -> fetch();
                 
                 $this -> amqp -> pub(
-                    'pendingInternalTransfer',
+                    'executeTransfer',
                     [
                         'xid' => $row['xid'],
                         'amount' => $strAmount,
-                        'assetid' => $asset['assetid']
-                        'srcUid' => $srcUser['uid'],
-                        'srcEmail' => $srcUser['email'],
-                        'dstUid' => $dstUser['uid'],
+                        'asset' => $asset,
+                        'srcUser' => $srcUser,
+                        'dstUser' => $dstUser,
                         'memo' => @$body['memo'],
-                        'lockid' => $lock['lockid']
+                        'lockid' => $lock['lockid'],
+                        'createTime' => $row['create_time']
                     ]
                 );
                 
