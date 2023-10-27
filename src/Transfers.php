@@ -140,7 +140,7 @@ class Transfers {
         $this -> pdo -> commit();
         
         $body['oppositeXid'] = $opposite['xid'];
-        $th -> amqp -> pub(
+        $this -> amqp -> pub(
             'executeTransfer_saga1',
             $body
         );
