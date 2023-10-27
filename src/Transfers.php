@@ -269,12 +269,12 @@ class Transfers {
                 ]
             ) -> then(function($lock) use($th, $body, $srcUser, $dstUser, $asset, $strAmount) {
                 $task = [
-                    ':uid' => $body['uid'],
+                    ':uid' => $srcUser['uid'],
                     ':type' => 'TRANSFER_OUT',
                     ':assetid' => $asset['assetid'],
                     ':amount' => $strAmount,
                     ':status' => 'PENDING',
-                    ':address' => $body['address'],
+                    ':address' => $dstUser['email'],
                     ':memo' => @$body['memo'],
                     ':wd_fee_this' => '0',
                     ':lockid' => $lock['lockid']
