@@ -86,7 +86,9 @@ create table wallet_transactions(
     bridge_issued smallint not null default 0,
     send_mail bool not null default TRUE,
     executor_lock bool not null default FALSE,
-    wd_fee_base decimal(65,32) default null
+    wd_fee_base decimal(65,32) default null,
+    lockid bigint default null,
+    opposite_xid bigint default null
 );
 
 GRANT SELECT, INSERT, UPDATE ON wallet_transactions TO "wallet.io";

@@ -8,6 +8,7 @@ class TransactionsAPI {
     private $amqp;
     private $transactions;
     private $networks;
+    private $transfers;
     
     private $allowedStatus = [
         'PENDING',
@@ -18,11 +19,12 @@ class TransactionsAPI {
         'CANCELED'
     ];
     
-    function __construct($log, $amqp, $transactions, $networks) {
+    function __construct($log, $amqp, $transactions, $networks, $transfers) {
         $this -> log = $log;
         $this -> amqp = $amqp;
         $this -> transactions = $transactions;
         $this -> networks = $networks;
+        $this -> transfers = $transfers;
         
         $this -> log -> debug('Initialized transactions API');
     }
@@ -144,6 +146,28 @@ class TransactionsAPI {
                 return $th -> ptpTransaction($transaction, $asset);
             }
         );
+    }
+    
+    public function createTransaction($path, $query, $body, $auth) {
+        $th = $this;
+        
+        if(!isset($body['type']))
+            throw new Error('MISSING_DATA', 'type', 400);
+        
+        if(!in_array($body['type'], ['WITHDRAWAL', 'TRANSFER_OUT']))
+            throw new Error('VALIDATION_ERROR', 'type', 400);
+        
+        if($body['type'] == 'TRANSFER_OUT') {
+            return $this -> transfers -> createTransfer([
+                'srcUid' => $auth['uid'],
+                'dstEmail' => @$body['address'],
+                'memo' => @$body['memo'],
+                'symbol' => @$body['asset'],
+                'amount' => @$body['amount']
+            ]) -> then(function($resp) use($th, $auth) {
+                return $th -> getTransaction(['xid' => $resp['xid']], [], [], $auth);
+            });
+        }
     }
     
     private function ptpTransaction($record, $asset) {
