@@ -224,7 +224,7 @@ class Transfers {
             throw new Error('VALIDATION_ERROR', 'memo', 400);
         if(isset($body['ignorePrec']) && !is_bool($body['ignorePrec']))
             throw new Error('VALIDATION_ERROR', 'ignorePrec');
-        if(isset($body['validateOnly'] && !is_bool($body['validateOnly']))
+        if(isset($body['validateOnly']) && !is_bool($body['validateOnly']))
             throw new Error('VALIDATION_ERROR', 'validateOnly');
         
         return Promise\all([
