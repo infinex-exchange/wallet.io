@@ -26,19 +26,24 @@ class Transfers {
         
         $promises = [];
         
-        $promises[] = $this -> amqp -> sub(
-            'pendingInternalTransfer',
-            [$this, 'pendingInternalTransfer']
+        $promises[] = $this -> amqp -> method(
+            'createTransfer',
+            [$this, 'createTransfer']
         );
         
-        $promises[] = $this -> amqp -> method(
+        $promises[] = $this -> amqp -> sub(
             'executeTransfer',
             [$this, 'executeTransfer_saga0']
         );
         
-        $promises[] = $this -> amqp -> method(
+        $promises[] = $this -> amqp -> sub(
             'executeTransfer_saga1',
             [$this, 'executeTransfer_saga1']
+        );
+        
+        $promises[] = $this -> amqp -> sub(
+            'executeTransfer_saga2',
+            [$this, 'executeTransfer_saga2']
         );
         
         return Promise\all($promises) -> then(
@@ -59,6 +64,9 @@ class Transfers {
         $promises = [];
         
         $promises[] = $this -> amqp -> unreg('createTransfer');
+        $promises[] = $this -> amqp -> unsub('executeTransfer');
+        $promises[] = $this -> amqp -> unsub('executeTransfer_saga1');
+        $promises[] = $this -> amqp -> unsub('executeTransfer_saga2');
         
         return Promise\all($promises) -> then(
             function() use ($th) {
