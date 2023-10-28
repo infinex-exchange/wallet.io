@@ -1,6 +1,7 @@
 <?php
 
 use Infinex\Exceptions\Error;
+use function Infinex\Math\trimFloat;
 
 class DepositAPI {
     private $log;
