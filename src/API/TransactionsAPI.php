@@ -262,7 +262,7 @@ class TransactionsAPI {
         )
             throw new Error('FORBIDDEN', 'No permissions to transaction '.$path['xid'], 403);
         
-        return $th -> withdrawals -> cancelWithdrawal([
+        return $this -> withdrawals -> cancelWithdrawal([
             'xid' => $path['xid'],
             '_sid' => $auth['sid'] // TODO: legacy code
         ]);
