@@ -70,6 +70,7 @@ class WithdrawalAPI {
                 'minAmount' => trimFloat($minAmount -> toFixed($asset['defaultPrec'])),
                 'feeMin' => trimFloat($feeRange['min'] -> toFixed($an['prec'])),
                 'feeMax' => trimFloat($feeRange['max'] -> toFixed($an['prec'])),
+                'feePrec' => $feeRange['prec'],
                 'prec' => $an['prec'],
                 'operating' => $an['network']['operating'],
                 'warnings' => []

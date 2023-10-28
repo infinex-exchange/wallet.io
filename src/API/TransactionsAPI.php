@@ -155,6 +155,9 @@ class TransactionsAPI {
     public function createTransaction($path, $query, $body, $auth) {
         $th = $this;
         
+        if(!$auth)
+            throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
+        
         if(!isset($body['type']))
             throw new Error('MISSING_DATA', 'type', 400);
         
@@ -207,6 +210,7 @@ class TransactionsAPI {
                 'address' => @$body['address'],
                 'memo' => @$body['memo'],
                 'amount' => @$body['amount'],
+                'fee' => @$body['fee'],
                 'validateOnly' => true
             ]) -> then(function() use($th, $body, $auth) {
                 return $th -> amqp -> call(
@@ -230,7 +234,9 @@ class TransactionsAPI {
                         'networkSymbol' => $body['network'],
                         'address' => $body['address'],
                         'memo' => @$body['memo'],
-                        'amount' => $body['amount']
+                        'amount' => $body['amount'],
+                        'fee' => @$body['fee'],
+                        '_sid' => $auth['sid'] // TODO: legacy code
                     ]) -> then(function($resp) use($th, $auth) {
                         return $th -> getTransaction(['xid' => $resp['xid']], [], [], $auth);
                     });
@@ -239,6 +245,27 @@ class TransactionsAPI {
         }
          
          
+    }
+    
+    public function cancelTransaction($path, $query, $body, $auth) {
+        if(!$auth)
+            throw new Error('UNAUTHORIZED', 'Unauthorized', 401);
+        
+        $transaction = $this -> transactions -> getTransaction([
+            'xid' => $path['xid'],
+            'uid' => $auth['uid']
+        ]);
+        
+        if(
+            $transaction['uid'] != $auth['uid'] ||
+            !in_array($transaction['status'], $this -> allowedStatus)
+        )
+            throw new Error('FORBIDDEN', 'No permissions to transaction '.$path['xid'], 403);
+        
+        return $th -> withdrawals -> cancelWithdrawal([
+            'xid' => $path['xid'],
+            '_sid' => $auth['sid'] // TODO: legacy code
+        ]);
     }
     
     private function ptpTransaction($record, $asset) {
