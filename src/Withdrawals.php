@@ -275,7 +275,7 @@ class Withdrawals {
                 $strAmount = $dAmount -> trimFloat(toFixed($an['prec']));
                 
                 $dLockAmount = $dAmount + $dFee;
-                $strLockAmount = trimFloat($dLockAmount -> toFixed($an['prec']))
+                $strLockAmount = trimFloat($dLockAmount -> toFixed($an['prec']));
                 
                 // Create withdrawal
                 
