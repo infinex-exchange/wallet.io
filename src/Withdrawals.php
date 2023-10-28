@@ -181,7 +181,7 @@ class Withdrawals {
             'getAsset',
             [
                 'assetid' => @$body['assetid'],
-                'assetSymbol' => @$body['symbol']
+                'symbol' => @$body['assetSymbol']
             ]
         ) -> then(function($asset) use($th, $body) {
             if(!$asset['enabled'])
