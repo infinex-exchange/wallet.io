@@ -12,6 +12,7 @@
         }
     ],
     "require": {
-        "infinex-exchange/common": "dev-main"
+        "infinex-exchange/common": "dev-main",
+        "php-decimal/php-decimal": "^1.1"
     }
 }
